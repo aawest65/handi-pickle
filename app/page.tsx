@@ -1,65 +1,155 @@
-import Image from "next/image";
+import Link from "next/link";
+
+const features = [
+  {
+    href: "/players",
+    title: "Players",
+    description: "Browse all registered players and their profiles.",
+    icon: "👤",
+  },
+  {
+    href: "/leaderboard",
+    title: "Leaderboard",
+    description: "See top-ranked players by play type and format.",
+    icon: "🏆",
+  },
+  {
+    href: "/tournaments",
+    title: "Tournaments",
+    description: "View and create pickleball tournaments.",
+    icon: "🥇",
+  },
+  {
+    href: "/leagues",
+    title: "Leagues",
+    description: "Manage ongoing league seasons and standings.",
+    icon: "📋",
+  },
+  {
+    href: "/matches",
+    title: "Record a Match",
+    description: "Submit match results and update player ratings instantly.",
+    icon: "🎯",
+  },
+];
+
+const stats = [
+  { label: "Rating Scale", value: "2.0 – 8.0" },
+  { label: "Play Types", value: "3" },
+  { label: "Formats", value: "5" },
+  { label: "Algorithm", value: "Elo-based" },
+];
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="flex flex-col">
+      {/* Hero section */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-teal-900 py-24 px-4">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-10 left-10 w-64 h-64 rounded-full bg-teal-400 blur-3xl" />
+          <div className="absolute bottom-10 right-10 w-80 h-80 rounded-full bg-blue-500 blur-3xl" />
+        </div>
+        <div className="relative max-w-4xl mx-auto text-center">
+          <div className="text-6xl mb-6">🏓</div>
+          <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4 tracking-tight">
+            Pickleball Ratings
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-xl text-teal-300 font-medium mb-4">
+            Dynamic Elo-based rating system
           </p>
+          <p className="text-slate-300 text-lg max-w-2xl mx-auto mb-10">
+            Track player skill levels across tournaments, leagues, and recreational play.
+            Ratings update automatically after every match using an Elo-based algorithm.
+          </p>
+          <div className="flex flex-wrap justify-center gap-4">
+            <Link
+              href="/leaderboard"
+              className="px-6 py-3 bg-teal-500 hover:bg-teal-400 text-white font-semibold rounded-lg transition-colors shadow-lg"
+            >
+              View Leaderboard
+            </Link>
+            <Link
+              href="/matches"
+              className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-lg transition-colors border border-slate-600"
+            >
+              Record a Match
+            </Link>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </section>
+
+      {/* Stats bar */}
+      <section className="bg-slate-800 border-y border-slate-700">
+        <div className="max-w-5xl mx-auto py-6 px-4 grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {stats.map((stat) => (
+            <div key={stat.label} className="text-center">
+              <div className="text-2xl font-bold text-teal-400">{stat.value}</div>
+              <div className="text-sm text-slate-400 mt-1">{stat.label}</div>
+            </div>
+          ))}
         </div>
-      </main>
+      </section>
+
+      {/* Features grid */}
+      <section className="max-w-6xl mx-auto py-16 px-4">
+        <h2 className="text-2xl font-bold text-slate-200 mb-8 text-center">
+          Everything you need to manage your pickleball community
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {features.map((feature) => (
+            <Link
+              key={feature.href}
+              href={feature.href}
+              className="group bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-teal-600 rounded-xl p-6 transition-all shadow-sm hover:shadow-teal-900/30 hover:shadow-lg"
+            >
+              <div className="text-3xl mb-3">{feature.icon}</div>
+              <h3 className="text-lg font-semibold text-slate-100 group-hover:text-teal-300 transition-colors mb-2">
+                {feature.title}
+              </h3>
+              <p className="text-slate-400 text-sm leading-relaxed">{feature.description}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section className="bg-slate-900 border-t border-slate-800 py-16 px-4">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-2xl font-bold text-slate-200 mb-8 text-center">How ratings work</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="text-center">
+              <div className="w-12 h-12 rounded-full bg-teal-900 border border-teal-600 flex items-center justify-center text-teal-300 font-bold text-xl mx-auto mb-4">
+                1
+              </div>
+              <h3 className="font-semibold text-slate-200 mb-2">Start at 3.0</h3>
+              <p className="text-slate-400 text-sm">
+                All new players begin with a 3.0 rating on a 2.0–8.0 scale, matching real-world
+                skill levels.
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="w-12 h-12 rounded-full bg-teal-900 border border-teal-600 flex items-center justify-center text-teal-300 font-bold text-xl mx-auto mb-4">
+                2
+              </div>
+              <h3 className="font-semibold text-slate-200 mb-2">Play matches</h3>
+              <p className="text-slate-400 text-sm">
+                Record match results for singles or doubles. Score differentials also influence
+                rating changes.
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="w-12 h-12 rounded-full bg-teal-900 border border-teal-600 flex items-center justify-center text-teal-300 font-bold text-xl mx-auto mb-4">
+                3
+              </div>
+              <h3 className="font-semibold text-slate-200 mb-2">Ratings update</h3>
+              <p className="text-slate-400 text-sm">
+                Elo-based algorithm adjusts ratings immediately. Reliability grows as you play
+                more games.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

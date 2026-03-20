@@ -1,0 +1,157 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+
+  accounts Account[]
+  sessions Session[]
+  player   Player?
+}
+
+model Player {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  name      String
+  gender    String
+  age       Int
+  createdAt DateTime @default(now())
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ratings Rating[]
+
+  team1Player1Matches Match[] @relation("Team1Player1")
+  team1Player2Matches Match[] @relation("Team1Player2")
+  team2Player1Matches Match[] @relation("Team2Player1")
+  team2Player2Matches Match[] @relation("Team2Player2")
+}
+
+model Rating {
+  id          String   @id @default(cuid())
+  playerId    String
+  playType    String
+  format      String
+  rating      Float    @default(3.0)
+  reliability Float    @default(0.0)
+  gamesPlayed Int      @default(0)
+  updatedAt   DateTime @updatedAt
+
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([playerId, playType, format])
+}
+
+model Match {
+  id            String   @id @default(cuid())
+  playType      String
+  format        String
+  date          DateTime
+  team1Score    Int
+  team2Score    Int
+  winningSide   String
+  isMedalRound  Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  team1Player1Id String
+  team1Player2Id String?
+  team2Player1Id String
+  team2Player2Id String?
+
+  team1Player1 Player  @relation("Team1Player1", fields: [team1Player1Id], references: [id])
+  team1Player2 Player? @relation("Team1Player2", fields: [team1Player2Id], references: [id])
+  team2Player1 Player  @relation("Team2Player1", fields: [team2Player1Id], references: [id])
+  team2Player2 Player? @relation("Team2Player2", fields: [team2Player2Id], references: [id])
+
+  tournamentMatch TournamentMatch?
+  leagueMatch     LeagueMatch?
+}
+
+model Tournament {
+  id          String    @id @default(cuid())
+  name        String
+  startDate   DateTime
+  endDate     DateTime?
+  location    String?
+  description String?
+  createdAt   DateTime  @default(now())
+
+  tournamentMatches TournamentMatch[]
+}
+
+model TournamentMatch {
+  id           String  @id @default(cuid())
+  tournamentId String
+  matchId      String  @unique
+  round        String?
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  match      Match      @relation(fields: [matchId], references: [id], onDelete: Cascade)
+}
+
+model League {
+  id          String    @id @default(cuid())
+  name        String
+  season      String
+  startDate   DateTime
+  endDate     DateTime?
+  description String?
+  createdAt   DateTime  @default(now())
+
+  leagueMatches LeagueMatch[]
+}
+
+model LeagueMatch {
+  id       String @id @default(cuid())
+  leagueId String
+  matchId  String @unique
+
+  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  match  Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+}
