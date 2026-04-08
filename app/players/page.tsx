@@ -1,37 +1,18 @@
 import Link from "next/link";
+import { prisma } from "@/lib/prisma";
 
-interface Rating {
-  playType: string;
-  format: string;
-  rating: number;
-  reliability: number;
-  gamesPlayed: number;
-}
-
-interface Player {
-  id: string;
-  name: string;
-  gender: string;
-  createdAt: string;
-  ratings: Rating[];
-}
-
-async function getPlayers(): Promise<Player[]> {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/api/players`, {
-    cache: "no-store",
+async function getPlayers() {
+  return prisma.player.findMany({
+    orderBy: { currentRating: "desc" },
   });
-  if (!res.ok) return [];
-  return res.json();
 }
 
-function getBestRating(ratings: Rating[]): number | null {
-  if (!ratings.length) return null;
-  return Math.max(...ratings.map((r) => r.rating));
-}
-
-function getTotalGames(ratings: Rating[]): number {
-  return ratings.reduce((sum, r) => sum + r.gamesPlayed, 0);
-}
+const CATEGORY_COLOR: Record<string, string> = {
+  PRO:          "bg-yellow-500/20 text-yellow-300 border-yellow-500/40",
+  ADVANCED:     "bg-blue-500/20 text-blue-300 border-blue-500/40",
+  INTERMEDIATE: "bg-teal-500/20 text-teal-300 border-teal-500/40",
+  NOVICE:       "bg-slate-500/20 text-slate-300 border-slate-500/40",
+};
 
 export default async function PlayersPage() {
   const players = await getPlayers();
@@ -55,38 +36,48 @@ export default async function PlayersPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {players.map((player) => {
-            const bestRating = getBestRating(player.ratings);
-            const totalGames = getTotalGames(player.ratings);
-            return (
-              <Link
-                key={player.id}
-                href={`/players/${player.id}`}
-                className="group bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-teal-600 rounded-xl p-5 transition-all hover:shadow-lg hover:shadow-teal-900/20"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div>
+          {players.map((player) => (
+            <Link
+              key={player.id}
+              href={`/players/${player.id}`}
+              className="group bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-teal-600 rounded-xl p-5 transition-all hover:shadow-lg hover:shadow-teal-900/20"
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div>
+                  <div className="flex items-baseline gap-2 flex-wrap">
                     <h2 className="text-lg font-semibold text-slate-100 group-hover:text-teal-300 transition-colors">
                       {player.name}
                     </h2>
-                    <span className="inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium bg-slate-700 text-slate-300">
+                    {(player.city || player.state) && (
+                      <span className="text-xs text-slate-400">
+                        {[player.city, player.state].filter(Boolean).join(", ")}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-slate-700 text-slate-300">
                       {player.gender === "MALE" ? "Male" : "Female"}
                     </span>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-teal-400">
-                      {bestRating !== null ? bestRating.toFixed(2) : "—"}
-                    </div>
-                    <div className="text-xs text-slate-500">best rating</div>
+                    <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-slate-700 text-slate-300">
+                      Age {player.age}
+                    </span>
+                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold border ${CATEGORY_COLOR[player.selfRatedCategory] ?? CATEGORY_COLOR.NOVICE}`}>
+                      {player.selfRatedCategory.charAt(0) + player.selfRatedCategory.slice(1).toLowerCase()}
+                    </span>
                   </div>
                 </div>
-                <div className="flex items-center justify-between text-sm text-slate-400 pt-3 border-t border-slate-700">
-                  <span>{totalGames} game{totalGames !== 1 ? "s" : ""} played</span>
-                  <span>{player.ratings.length} rating{player.ratings.length !== 1 ? "s" : ""}</span>
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-teal-400">
+                    {player.currentRating.toFixed(3)}
+                  </div>
+                  <div className="text-xs text-slate-500">rating</div>
                 </div>
-              </Link>
-            );
-          })}
+              </div>
+              <div className="flex items-center justify-between text-sm text-slate-400 pt-3 border-t border-slate-700">
+                <span>{player.gamesPlayed} game{player.gamesPlayed !== 1 ? "s" : ""} played</span>
+              </div>
+            </Link>
+          ))}
         </div>
       )}
     </div>

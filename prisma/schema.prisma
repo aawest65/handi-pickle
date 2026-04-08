@@ -57,101 +57,66 @@ model User {
 }
 
 model Player {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  name      String
-  gender    String
-  age       Int
-  createdAt DateTime @default(now())
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  name              String
+  gender            String   // MALE | FEMALE
+  age               Int
+  city              String?
+  state             String?
+  selfRatedCategory String   @default("NOVICE")
+  currentRating     Float    @default(3.0)
+  gamesPlayed       Int      @default(0)
+  createdAt         DateTime @default(now())
 
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  ratings Rating[]
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  team1Player1Matches Match[] @relation("Team1Player1")
-  team1Player2Matches Match[] @relation("Team1Player2")
-  team2Player1Matches Match[] @relation("Team2Player1")
-  team2Player2Matches Match[] @relation("Team2Player2")
+  team1Player1Games Game[]         @relation("T1P1")
+  team1Player2Games Game[]         @relation("T1P2")
+  team2Player1Games Game[]         @relation("T2P1")
+  team2Player2Games Game[]         @relation("T2P2")
+  ratingHistory     RatingHistory[]
 }
 
-model Rating {
-  id          String   @id @default(cuid())
-  playerId    String
-  playType    String
-  format      String
-  rating      Float    @default(3.0)
-  reliability Float    @default(0.0)
-  gamesPlayed Int      @default(0)
-  updatedAt   DateTime @updatedAt
-
-  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
-
-  @@unique([playerId, playType, format])
-}
-
-model Match {
-  id            String   @id @default(cuid())
-  playType      String
-  format        String
-  date          DateTime
-  team1Score    Int
-  team2Score    Int
-  winningSide   String
-  isMedalRound  Boolean  @default(false)
-  createdAt     DateTime @default(now())
+// gameType: REC | CLUB | TOURNEY_REG | TOURNEY_MEDAL
+// format:   SINGLES | DOUBLES
+model Game {
+  id             String   @id @default(cuid())
+  gameType       String
+  format         String
+  date           DateTime
+  maxScore       Int      @default(11)
+  team1Score     Int
+  team2Score     Int
+  createdAt      DateTime @default(now())
 
   team1Player1Id String
   team1Player2Id String?
   team2Player1Id String
   team2Player2Id String?
 
-  team1Player1 Player  @relation("Team1Player1", fields: [team1Player1Id], references: [id])
-  team1Player2 Player? @relation("Team1Player2", fields: [team1Player2Id], references: [id])
-  team2Player1 Player  @relation("Team2Player1", fields: [team2Player1Id], references: [id])
-  team2Player2 Player? @relation("Team2Player2", fields: [team2Player2Id], references: [id])
+  team1Player1  Player  @relation("T1P1", fields: [team1Player1Id], references: [id])
+  team1Player2  Player? @relation("T1P2", fields: [team1Player2Id], references: [id])
+  team2Player1  Player  @relation("T2P1", fields: [team2Player1Id], references: [id])
+  team2Player2  Player? @relation("T2P2", fields: [team2Player2Id], references: [id])
 
-  tournamentMatch TournamentMatch?
-  leagueMatch     LeagueMatch?
+  ratingHistory RatingHistory[]
 }
 
-model Tournament {
-  id          String    @id @default(cuid())
-  name        String
-  startDate   DateTime
-  endDate     DateTime?
-  location    String?
-  description String?
-  createdAt   DateTime  @default(now())
+model RatingHistory {
+  id             String   @id @default(cuid())
+  playerId       String
+  gameId         String
+  ratingBefore   Float
+  ratingAfter    Float
+  delta          Float
+  winLossFactor  Float
+  typeFactor     Float
+  genderFactor   Float
+  ageFactor      Float
+  rateTypeFactor Float
+  createdAt      DateTime @default(now())
 
-  tournamentMatches TournamentMatch[]
-}
-
-model TournamentMatch {
-  id           String  @id @default(cuid())
-  tournamentId String
-  matchId      String  @unique
-  round        String?
-
-  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
-  match      Match      @relation(fields: [matchId], references: [id], onDelete: Cascade)
-}
-
-model League {
-  id          String    @id @default(cuid())
-  name        String
-  season      String
-  startDate   DateTime
-  endDate     DateTime?
-  description String?
-  createdAt   DateTime  @default(now())
-
-  leagueMatches LeagueMatch[]
-}
-
-model LeagueMatch {
-  id       String @id @default(cuid())
-  leagueId String
-  matchId  String @unique
-
-  league League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
-  match  Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
 }

@@ -11,10 +11,12 @@ export async function GET(
     const player = await prisma.player.findUnique({
       where: { id },
       include: {
-        ratings: {
-          orderBy: [{ playType: "asc" }, { format: "asc" }],
+        ratingHistory: {
+          include: { game: true },
+          orderBy: { createdAt: "desc" },
+          take: 20,
         },
-        team1Player1Matches: {
+        team1Player1Games: {
           include: {
             team1Player1: true,
             team1Player2: true,
@@ -24,7 +26,7 @@ export async function GET(
           orderBy: { date: "desc" },
           take: 10,
         },
-        team2Player1Matches: {
+        team2Player1Games: {
           include: {
             team1Player1: true,
             team1Player2: true,

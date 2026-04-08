@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Pickleball Ratings",
-  description: "Dynamic pickleball rating system",
+  title: "HandiPick",
+  description: "Your pickleball handicap system",
 };
 
 const navLinks = [
@@ -50,7 +50,7 @@ export default function RootLayout({
                     href="/"
                     className="text-teal-400 font-bold text-lg tracking-tight hover:text-teal-300 transition-colors"
                   >
-                    PickleRatings
+                    HandiPick (your pickleball handicap)
                   </Link>
                 </div>
                 <div className="hidden md:flex items-center gap-1">
@@ -82,7 +82,7 @@ export default function RootLayout({
           </nav>
           <main className="flex-1">{children}</main>
           <footer className="bg-slate-900 border-t border-slate-800 py-6 text-center text-slate-500 text-sm">
-            <p>PickleRatings &mdash; Dynamic pickleball rating system</p>
+            <p>HandiPick &mdash; Your pickleball handicap system</p>
           </footer>
         </Providers>
       </body>

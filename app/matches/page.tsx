@@ -3,48 +3,18 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-const PLAY_TYPES = ["RECREATIONAL", "LEAGUE", "TOURNAMENT"] as const;
-const FORMATS = [
-  "MENS_SINGLES",
-  "MENS_DOUBLES",
-  "WOMENS_SINGLES",
-  "WOMENS_DOUBLES",
-  "MIXED_DOUBLES",
-] as const;
-
-type Format = (typeof FORMATS)[number];
-
-const PLAY_TYPE_LABELS: Record<string, string> = {
-  RECREATIONAL: "Recreational",
-  LEAGUE: "League",
-  TOURNAMENT: "Tournament",
+const GAME_TYPES = ["REC", "CLUB", "TOURNEY_REG", "TOURNEY_MEDAL"] as const;
+const GAME_TYPE_LABELS: Record<string, string> = {
+  REC:          "Recreational",
+  CLUB:         "Club",
+  TOURNEY_REG:  "Tournament — Regular",
+  TOURNEY_MEDAL:"Tournament — Medal Round",
 };
-
-const FORMAT_LABELS: Record<string, string> = {
-  MENS_SINGLES: "Men's Singles",
-  MENS_DOUBLES: "Men's Doubles",
-  WOMENS_SINGLES: "Women's Singles",
-  WOMENS_DOUBLES: "Women's Doubles",
-  MIXED_DOUBLES: "Mixed Doubles",
-};
-
-const SINGLES_FORMATS: Format[] = ["MENS_SINGLES", "WOMENS_SINGLES"];
 
 interface Player {
-  id: string;
-  name: string;
+  id:     string;
+  name:   string;
   gender: string;
-}
-
-interface Tournament {
-  id: string;
-  name: string;
-}
-
-interface League {
-  id: string;
-  name: string;
-  season: string;
 }
 
 function InputLabel({ children }: { children: React.ReactNode }) {
@@ -55,144 +25,104 @@ function InputLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Select({
+function PlayerSelect({
   value,
   onChange,
-  children,
-  disabled,
+  players,
+  excluded,
+  placeholder,
 }: {
   value: string;
   onChange: (v: string) => void;
-  children: React.ReactNode;
-  disabled?: boolean;
+  players: Player[];
+  excluded: string[];
+  placeholder?: string;
 }) {
+  const available = players.filter((p) => !excluded.includes(p.id) || p.id === value);
   return (
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      disabled={disabled}
-      className="w-full bg-slate-900 border border-slate-600 text-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed"
-    >
-      {children}
-    </select>
-  );
-}
-
-function NumberInput({
-  value,
-  onChange,
-  min = 0,
-}: {
-  value: number | string;
-  onChange: (v: number) => void;
-  min?: number;
-}) {
-  return (
-    <input
-      type="number"
-      min={min}
-      value={value}
-      onChange={(e) => onChange(Number(e.target.value))}
       className="w-full bg-slate-900 border border-slate-600 text-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-    />
+    >
+      <option value="">{placeholder ?? "-- Select player --"}</option>
+      {available.map((p) => (
+        <option key={p.id} value={p.id}>
+          {p.name} ({p.gender === "MALE" ? "M" : "F"})
+        </option>
+      ))}
+    </select>
   );
 }
 
 export default function MatchesPage() {
   const router = useRouter();
   const [players, setPlayers] = useState<Player[]>([]);
-  const [tournaments, setTournaments] = useState<Tournament[]>([]);
-  const [leagues, setLeagues] = useState<League[]>([]);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [playType, setPlayType] = useState("RECREATIONAL");
-  const [isMedalRound, setIsMedalRound] = useState(false);
-  const [format, setFormat] = useState("MENS_SINGLES");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-  const [team1Player1Id, setTeam1Player1Id] = useState("");
-  const [team1Player2Id, setTeam1Player2Id] = useState("");
-  const [team2Player1Id, setTeam2Player1Id] = useState("");
-  const [team2Player2Id, setTeam2Player2Id] = useState("");
-  const [team1Score, setTeam1Score] = useState<number>(0);
-  const [team2Score, setTeam2Score] = useState<number>(0);
-  const [tournamentId, setTournamentId] = useState("");
-  const [leagueId, setLeagueId] = useState("");
+  const [gameType, setGameType]           = useState("REC");
+  const [format, setFormat]               = useState<"SINGLES" | "DOUBLES">("SINGLES");
+  const [date, setDate]                   = useState(new Date().toISOString().split("T")[0]);
+  const [maxScore, setMaxScore]           = useState(11);
+  const [team1Player1Id, setT1P1]         = useState("");
+  const [team1Player2Id, setT1P2]         = useState("");
+  const [team2Player1Id, setT2P1]         = useState("");
+  const [team2Player2Id, setT2P2]         = useState("");
+  const [team1Score, setTeam1Score]       = useState<number | "">(0);
+  const [team2Score, setTeam2Score]       = useState<number | "">(0);
 
-  const isDoubles = !SINGLES_FORMATS.includes(format as Format);
+  const isDoubles = format === "DOUBLES";
 
   useEffect(() => {
     fetch("/api/players")
       .then((r) => r.json())
       .then(setPlayers)
       .catch(console.error);
-    fetch("/api/tournaments")
-      .then((r) => r.json())
-      .then(setTournaments)
-      .catch(console.error);
-    fetch("/api/leagues")
-      .then((r) => r.json())
-      .then(setLeagues)
-      .catch(console.error);
   }, []);
 
-  // Reset doubles players when switching to singles
   useEffect(() => {
     if (!isDoubles) {
-      setTeam1Player2Id("");
-      setTeam2Player2Id("");
+      setT1P2("");
+      setT2P2("");
     }
   }, [isDoubles]);
 
-  // Reset tournament/league/medalRound when play type changes
-  useEffect(() => {
-    if (playType !== "TOURNAMENT") {
-      setTournamentId("");
-      setIsMedalRound(false);
-    }
-    if (playType !== "LEAGUE") setLeagueId("");
-  }, [playType]);
+  const allSelectedIds = [team1Player1Id, team1Player2Id, team2Player1Id, team2Player2Id].filter(Boolean);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
     if (!team1Player1Id || !team2Player1Id) {
-      setError("Please select players for both teams.");
+      setError("Please select at least one player per team.");
       return;
     }
-
     if (isDoubles && (!team1Player2Id || !team2Player2Id)) {
-      setError("Please select both players for each team in doubles format.");
+      setError("Doubles requires two players per team.");
       return;
     }
-
+    if (team1Score === "" || team2Score === "") {
+      setError("Please enter scores for both teams.");
+      return;
+    }
     if (team1Score === team2Score) {
-      setError("Matches cannot end in a tie. Please enter valid scores.");
+      setError("Games cannot end in a tie.");
       return;
     }
 
     setLoading(true);
     try {
       const body: Record<string, unknown> = {
-        playType,
-        format,
-        date,
-        team1Player1Id,
-        team2Player1Id,
-        team1Score,
-        team2Score,
+        gameType, format, date, maxScore,
+        team1Player1Id, team2Player1Id,
+        team1Score, team2Score,
       };
-
       if (isDoubles) {
-        if (team1Player2Id) body.team1Player2Id = team1Player2Id;
-        if (team2Player2Id) body.team2Player2Id = team2Player2Id;
+        body.team1Player2Id = team1Player2Id;
+        body.team2Player2Id = team2Player2Id;
       }
-
-      if (playType === "TOURNAMENT" && tournamentId) body.tournamentId = tournamentId;
-      if (playType === "TOURNAMENT") body.isMedalRound = isMedalRound;
-      if (playType === "LEAGUE" && leagueId) body.leagueId = leagueId;
 
       const res = await fetch("/api/matches", {
         method: "POST",
@@ -202,15 +132,13 @@ export default function MatchesPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error ?? "Failed to record match");
+        throw new Error(data.error ?? "Failed to record game");
       }
 
       setSuccess(true);
-      setTimeout(() => {
-        router.push("/leaderboard");
-      }, 2000);
+      setTimeout(() => router.push("/leaderboard"), 2000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to record match");
+      setError(err instanceof Error ? err.message : "Failed to record game");
     } finally {
       setLoading(false);
     }
@@ -220,106 +148,76 @@ export default function MatchesPage() {
     return (
       <div className="max-w-2xl mx-auto py-20 px-4 text-center">
         <div className="text-6xl mb-6">🎉</div>
-        <h2 className="text-2xl font-bold text-teal-400 mb-2">Match Recorded!</h2>
-        <p className="text-slate-400">Ratings have been updated. Redirecting to leaderboard...</p>
+        <h2 className="text-2xl font-bold text-teal-400 mb-2">Game Recorded!</h2>
+        <p className="text-slate-400">Ratings updated. Redirecting to leaderboard...</p>
       </div>
     );
   }
 
+  const t1Name = players.find((p) => p.id === team1Player1Id)?.name;
+  const t2Name = players.find((p) => p.id === team2Player1Id)?.name;
+
   return (
     <div className="max-w-2xl mx-auto py-10 px-4">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-100">Record a Match</h1>
-        <p className="text-slate-400 mt-1">
-          Submit match results to update player ratings automatically.
-        </p>
+        <h1 className="text-3xl font-bold text-slate-100">Record a Game</h1>
+        <p className="text-slate-400 mt-1">Submit results to update player ratings automatically.</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Match details */}
+        {/* Game details */}
         <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 space-y-5">
-          <h2 className="text-lg font-semibold text-slate-200">Match Details</h2>
+          <h2 className="text-lg font-semibold text-slate-200">Game Details</h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <InputLabel>Play Type</InputLabel>
-              <Select value={playType} onChange={setPlayType}>
-                {PLAY_TYPES.map((pt) => (
-                  <option key={pt} value={pt}>
-                    {PLAY_TYPE_LABELS[pt]}
-                  </option>
+              <InputLabel>Game Type</InputLabel>
+              <select
+                value={gameType}
+                onChange={(e) => setGameType(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-600 text-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+              >
+                {GAME_TYPES.map((gt) => (
+                  <option key={gt} value={gt}>{GAME_TYPE_LABELS[gt]}</option>
                 ))}
-              </Select>
+              </select>
             </div>
             <div>
               <InputLabel>Format</InputLabel>
-              <Select value={format} onChange={setFormat}>
-                {FORMATS.map((f) => (
-                  <option key={f} value={f}>
-                    {FORMAT_LABELS[f]}
-                  </option>
-                ))}
-              </Select>
+              <select
+                value={format}
+                onChange={(e) => setFormat(e.target.value as "SINGLES" | "DOUBLES")}
+                className="w-full bg-slate-900 border border-slate-600 text-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+              >
+                <option value="SINGLES">Singles</option>
+                <option value="DOUBLES">Doubles</option>
+              </select>
             </div>
           </div>
 
-          <div>
-            <InputLabel>Date</InputLabel>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              required
-              className="w-full bg-slate-900 border border-slate-600 text-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <InputLabel>Date</InputLabel>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+                className="w-full bg-slate-900 border border-slate-600 text-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+              />
+            </div>
+            <div>
+              <InputLabel>Max Score (game to)</InputLabel>
+              <input
+                type="number"
+                min={7}
+                max={21}
+                value={maxScore}
+                onChange={(e) => setMaxScore(Number(e.target.value))}
+                className="w-full bg-slate-900 border border-slate-600 text-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+              />
+            </div>
           </div>
-
-          {/* Tournament link */}
-          {playType === "TOURNAMENT" && (
-            <div>
-              <InputLabel>Tournament (optional)</InputLabel>
-              <Select value={tournamentId} onChange={setTournamentId}>
-                <option value="">-- Select tournament --</option>
-                {tournaments.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          )}
-
-          {/* Medal Round checkbox — only shown for TOURNAMENT */}
-          {playType === "TOURNAMENT" && (
-            <div>
-              <label className="flex items-center gap-3 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  checked={isMedalRound}
-                  onChange={(e) => setIsMedalRound(e.target.checked)}
-                  className="accent-teal-500 w-4 h-4"
-                />
-                <span className="text-sm font-medium text-slate-300 group-hover:text-teal-400 transition-colors">
-                  Medal Round
-                </span>
-              </label>
-            </div>
-          )}
-
-          {/* League link */}
-          {playType === "LEAGUE" && (
-            <div>
-              <InputLabel>League (optional)</InputLabel>
-              <Select value={leagueId} onChange={setLeagueId}>
-                <option value="">-- Select league --</option>
-                {leagues.map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.name} ({l.season})
-                  </option>
-                ))}
-              </Select>
-            </div>
-          )}
         </div>
 
         {/* Teams */}
@@ -329,33 +227,33 @@ export default function MatchesPage() {
             <h2 className="text-base font-semibold text-teal-400">Team 1</h2>
             <div>
               <InputLabel>Player 1 *</InputLabel>
-              <Select value={team1Player1Id} onChange={setTeam1Player1Id}>
-                <option value="">-- Select player --</option>
-                {players.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </Select>
+              <PlayerSelect
+                value={team1Player1Id}
+                onChange={setT1P1}
+                players={players}
+                excluded={allSelectedIds.filter((id) => id !== team1Player1Id)}
+              />
             </div>
             {isDoubles && (
               <div>
                 <InputLabel>Player 2 *</InputLabel>
-                <Select value={team1Player2Id} onChange={setTeam1Player2Id}>
-                  <option value="">-- Select player --</option>
-                  {players
-                    .filter((p) => p.id !== team1Player1Id)
-                    .map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                </Select>
+                <PlayerSelect
+                  value={team1Player2Id}
+                  onChange={setT1P2}
+                  players={players}
+                  excluded={allSelectedIds.filter((id) => id !== team1Player2Id)}
+                />
               </div>
             )}
             <div>
               <InputLabel>Score *</InputLabel>
-              <NumberInput value={team1Score} onChange={setTeam1Score} />
+              <input
+                type="number"
+                min={0}
+                value={team1Score}
+                onChange={(e) => setTeam1Score(e.target.value === "" ? "" : Number(e.target.value))}
+                className="w-full bg-slate-900 border border-slate-600 text-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+              />
             </div>
           </div>
 
@@ -364,55 +262,46 @@ export default function MatchesPage() {
             <h2 className="text-base font-semibold text-slate-300">Team 2</h2>
             <div>
               <InputLabel>Player 1 *</InputLabel>
-              <Select value={team2Player1Id} onChange={setTeam2Player1Id}>
-                <option value="">-- Select player --</option>
-                {players
-                  .filter(
-                    (p) => p.id !== team1Player1Id && p.id !== team1Player2Id
-                  )
-                  .map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-              </Select>
+              <PlayerSelect
+                value={team2Player1Id}
+                onChange={setT2P1}
+                players={players}
+                excluded={allSelectedIds.filter((id) => id !== team2Player1Id)}
+              />
             </div>
             {isDoubles && (
               <div>
                 <InputLabel>Player 2 *</InputLabel>
-                <Select value={team2Player2Id} onChange={setTeam2Player2Id}>
-                  <option value="">-- Select player --</option>
-                  {players
-                    .filter(
-                      (p) =>
-                        p.id !== team1Player1Id &&
-                        p.id !== team1Player2Id &&
-                        p.id !== team2Player1Id
-                    )
-                    .map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                </Select>
+                <PlayerSelect
+                  value={team2Player2Id}
+                  onChange={setT2P2}
+                  players={players}
+                  excluded={allSelectedIds.filter((id) => id !== team2Player2Id)}
+                />
               </div>
             )}
             <div>
               <InputLabel>Score *</InputLabel>
-              <NumberInput value={team2Score} onChange={setTeam2Score} />
+              <input
+                type="number"
+                min={0}
+                value={team2Score}
+                onChange={(e) => setTeam2Score(e.target.value === "" ? "" : Number(e.target.value))}
+                className="w-full bg-slate-900 border border-slate-600 text-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+              />
             </div>
           </div>
         </div>
 
         {/* Score preview */}
-        {(team1Score > 0 || team2Score > 0) && team1Score !== team2Score && (
+        {team1Score !== "" && team2Score !== "" && team1Score !== team2Score && (
           <div className="text-center py-3 bg-slate-800/50 rounded-lg border border-slate-700">
             <span className="text-slate-400 text-sm">
               Winner:{" "}
               <span className="font-semibold text-teal-400">
-                {team1Score > team2Score
-                  ? players.find((p) => p.id === team1Player1Id)?.name ?? "Team 1"
-                  : players.find((p) => p.id === team2Player1Id)?.name ?? "Team 2"}
+                {(team1Score as number) > (team2Score as number)
+                  ? (t1Name ?? "Team 1")
+                  : (t2Name ?? "Team 2")}
               </span>{" "}
               ({team1Score} &ndash; {team2Score})
             </span>
@@ -430,7 +319,7 @@ export default function MatchesPage() {
           disabled={loading}
           className="w-full py-3 bg-teal-600 hover:bg-teal-500 disabled:bg-teal-900 disabled:text-teal-600 text-white font-semibold rounded-xl transition-colors text-sm"
         >
-          {loading ? "Recording match..." : "Record Match & Update Ratings"}
+          {loading ? "Recording game..." : "Record Game & Update Ratings"}
         </button>
       </form>
     </div>

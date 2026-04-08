@@ -1,0 +1,15 @@
+# Normalize line endings: commit as LF, checkout as LF on Mac/Linux
+* text=auto eol=lf
+
+# Windows-only files can keep CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary files — no line-ending conversion
+*.db binary
+*.db-shm binary
+*.db-wal binary
+*.xlsx binary
+*.png binary
+*.jpg binary
+*.ico binary

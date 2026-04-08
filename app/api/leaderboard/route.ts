@@ -4,31 +4,26 @@ import { prisma } from "@/lib/prisma";
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const playType = searchParams.get("playType") ?? "RECREATIONAL";
-    const format = searchParams.get("format") ?? "MENS_SINGLES";
+    const gender = searchParams.get("gender"); // optional: "MALE" | "FEMALE"
 
-    const ratings = await prisma.rating.findMany({
+    const players = await prisma.player.findMany({
       where: {
-        playType,
-        format,
-        gamesPlayed: { gt: 0 },
+        ...(gender ? { gender } : {}),
       },
-      include: {
-        player: true,
-      },
-      orderBy: { rating: "desc" },
+      orderBy: { currentRating: "desc" },
     });
 
-    const leaderboard = ratings.map((r: typeof ratings[number], index: number) => ({
-      rank: index + 1,
-      playerId: r.playerId,
-      playerName: r.player.name,
-      playerGender: r.player.gender,
-      rating: r.rating,
-      reliability: r.reliability,
-      gamesPlayed: r.gamesPlayed,
-      playType: r.playType,
-      format: r.format,
+    const leaderboard = players.map((p, index) => ({
+      rank:         index + 1,
+      playerId:     p.id,
+      playerName:   p.name,
+      playerGender: p.gender,
+      playerAge:    p.age,
+      playerCity:   p.city,
+      playerState:  p.state,
+      rating:       p.currentRating,
+      gamesPlayed:  p.gamesPlayed,
+      category:     p.selfRatedCategory,
     }));
 
     return NextResponse.json(leaderboard);
