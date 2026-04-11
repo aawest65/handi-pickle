@@ -58,9 +58,20 @@ model User {
   password      String?
   role          Role      @default(USER)
 
-  accounts Account[]
-  sessions Session[]
-  player   Player?
+  accounts            Account[]
+  sessions            Session[]
+  player              Player?
+  passwordResetTokens PasswordResetToken[]
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Player {

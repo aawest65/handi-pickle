@@ -111,7 +111,13 @@ function LoginForm() {
           Continue with Google
         </button>
 
-        <p className="mt-6 text-center text-sm text-slate-400">
+        <p className="mt-4 text-center">
+          <Link href="/reset-password" className="text-slate-500 hover:text-slate-300 text-xs transition-colors">
+            Forgot password?
+          </Link>
+        </p>
+
+        <p className="mt-4 text-center text-sm text-slate-400">
           Don&apos;t have an account?{" "}
           <Link href="/register" className="text-teal-400 hover:text-teal-300 font-medium transition-colors">
             Register

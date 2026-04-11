@@ -64,6 +64,10 @@ export default function AdminPage() {
   const [editRatingLoading, setEditRatingLoading] = useState(false);
   const [editRatingError, setEditRatingError] = useState("");
 
+  // Reset link state
+  const [resetLinkUserId, setResetLinkUserId] = useState<string | null>(null);
+  const [resetLinkCopied, setResetLinkCopied] = useState<string | null>(null);
+
   // Reassign player state
   const [showReassign, setShowReassign] = useState(false);
   const [reassignPlayerId, setReassignPlayerId] = useState("");
@@ -176,6 +180,22 @@ export default function AdminPage() {
     }
   }
 
+  async function handleCopyResetLink(userId: string) {
+    setResetLinkUserId(userId);
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/reset-link`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) { alert(data.error ?? "Failed to generate link"); return; }
+      await navigator.clipboard.writeText(data.resetUrl);
+      setResetLinkCopied(userId);
+      setTimeout(() => setResetLinkCopied(null), 3000);
+    } catch {
+      alert("Failed to copy link");
+    } finally {
+      setResetLinkUserId(null);
+    }
+  }
+
   const playersWithUsers = users.filter((u) => u.player);
   const usersWithoutPlayer = users.filter((u) => !u.player);
   const selectedPlayerUser = users.find((u) => u.player?.id === reassignPlayerId);
@@ -247,6 +267,15 @@ export default function AdminPage() {
                     )}
                     {user.player && !user.player.onboardingComplete && (
                       <span className="text-xs text-amber-500">Incomplete onboarding</span>
+                    )}
+                    {!user.email?.endsWith("@example.com") && (
+                      <button
+                        onClick={() => handleCopyResetLink(user.id)}
+                        disabled={resetLinkUserId === user.id}
+                        className="text-xs text-slate-500 hover:text-slate-300 transition-colors disabled:opacity-50 mt-0.5"
+                      >
+                        {resetLinkCopied === user.id ? "✓ Link copied!" : resetLinkUserId === user.id ? "Generating…" : "Copy reset link"}
+                      </button>
                     )}
                   </td>
                   <td className="px-4 py-3 text-center hidden sm:table-cell">
