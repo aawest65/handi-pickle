@@ -1,19 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-async function requireSuperAdmin(req: NextRequest) {
-  const token = await getToken({ req, secret: process.env.AUTH_SECRET });
-  if (!token || token.role !== "SUPER_ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-  return null;
-}
-
-// GET /api/admin/users — list all users with player info
-export async function GET(req: NextRequest) {
-  const token = await getToken({ req, secret: process.env.AUTH_SECRET });
-  if (!token || (token.role !== "ADMIN" && token.role !== "SUPER_ADMIN")) {
+// GET /api/admin/users — list all users with player info (ADMIN+)
+export async function GET() {
+  const session = await auth();
+  const role = session?.user?.role;
+  if (!session || (role !== "ADMIN" && role !== "SUPER_ADMIN")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -41,8 +34,10 @@ export async function GET(req: NextRequest) {
 
 // PATCH /api/admin/users — update a user's role (SUPER_ADMIN only)
 export async function PATCH(req: NextRequest) {
-  const forbidden = await requireSuperAdmin(req);
-  if (forbidden) return forbidden;
+  const session = await auth();
+  if (session?.user?.role !== "SUPER_ADMIN") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const { userId, role } = await req.json();
   if (!userId || !["USER", "ADMIN", "SUPER_ADMIN"].includes(role)) {
