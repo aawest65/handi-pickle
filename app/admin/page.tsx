@@ -252,7 +252,7 @@ export default function AdminPage() {
                   <td className="px-4 py-3 text-center hidden sm:table-cell">
                     {user.player ? (
                       editRatingPlayerId === user.player.id ? (
-                        <div className="flex items-center gap-1 justify-center">
+                        <div className="flex flex-col items-center gap-1">
                           <input
                             type="number"
                             step="0.05"
@@ -260,18 +260,27 @@ export default function AdminPage() {
                             max="8.0"
                             value={editRatingValue}
                             onChange={(e) => setEditRatingValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleEditRating(user.player!.id);
+                              if (e.key === "Escape") { setEditRatingPlayerId(null); setEditRatingError(""); }
+                            }}
                             className="w-20 bg-slate-800 border border-teal-500 text-slate-100 rounded px-2 py-1 text-xs text-center focus:outline-none"
                             autoFocus
                           />
-                          <button
-                            onClick={() => handleEditRating(user.player!.id)}
-                            disabled={editRatingLoading}
-                            className="text-teal-400 hover:text-teal-300 text-xs font-semibold disabled:opacity-50"
-                          >✓</button>
-                          <button
-                            onClick={() => { setEditRatingPlayerId(null); setEditRatingError(""); }}
-                            className="text-slate-500 hover:text-slate-300 text-xs"
-                          >✕</button>
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => handleEditRating(user.player!.id)}
+                              disabled={editRatingLoading}
+                              className="px-2 py-0.5 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white text-xs font-semibold rounded transition-colors"
+                            >{editRatingLoading ? "…" : "Save"}</button>
+                            <button
+                              onClick={() => { setEditRatingPlayerId(null); setEditRatingError(""); }}
+                              className="px-2 py-0.5 bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs rounded transition-colors"
+                            >Cancel</button>
+                          </div>
+                          {editRatingError && (
+                            <div className="text-red-400 text-xs">{editRatingError}</div>
+                          )}
                         </div>
                       ) : (
                         <button
@@ -289,9 +298,6 @@ export default function AdminPage() {
                         </button>
                       )
                     ) : <span className="text-slate-600">—</span>}
-                    {editRatingPlayerId === user.player?.id && editRatingError && (
-                      <div className="text-red-400 text-xs mt-1">{editRatingError}</div>
-                    )}
                   </td>
                   <td className="px-4 py-3 text-center hidden sm:table-cell text-slate-300">
                     {user.player?.gamesPlayed ?? <span className="text-slate-600">—</span>}
