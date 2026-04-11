@@ -1,5 +1,5 @@
-const CACHE = "handipick-v3";
-const PRECACHE = ["/", "/leaderboard", "/players", "/login", "/register", "/manifest.webmanifest"];
+const CACHE = "handipick-v4";
+const PRECACHE = ["/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -21,24 +21,28 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
 
-  // Network-first for API and auth routes
-  if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/_next/")) {
+  // Network-first for: API routes, auth, Next.js internals, and HTML page navigations
+  // (navigations must always be fresh so auth redirects and role changes take effect)
+  const isNavigation = event.request.mode === "navigate";
+  const isNetworkFirst =
+    isNavigation ||
+    url.pathname.startsWith("/api/") ||
+    url.pathname.startsWith("/_next/");
+
+  if (isNetworkFirst) {
     event.respondWith(
       fetch(event.request).catch(() => caches.match(event.request))
     );
     return;
   }
 
-  // Cache-first with network fallback for everything else
+  // Cache-first for static assets (icons, fonts, images, etc.)
   event.respondWith(
     caches.match(event.request).then(
       (cached) =>
         cached ??
         fetch(event.request).then((response) => {
-          // Never cache redirects — they can become stale and trap users
-          if (response.redirected || response.type === "opaqueredirect" || response.status >= 300) {
-            return response;
-          }
+          if (response.status >= 300) return response; // never cache errors or redirects
           const clone = response.clone();
           caches.open(CACHE).then((cache) => cache.put(event.request, clone));
           return response;
