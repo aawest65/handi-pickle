@@ -7,6 +7,7 @@ import NavAuth from "@/app/components/NavAuth";
 import BottomNav from "@/app/components/BottomNav";
 import GuestBanner from "@/app/components/GuestBanner";
 import InstallPrompt from "@/app/components/InstallPrompt";
+import ServiceWorker from "@/app/components/ServiceWorker";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -98,6 +99,7 @@ export default function RootLayout({
           <BottomNav />
           <GuestBanner />
           <InstallPrompt />
+          <ServiceWorker />
         </Providers>
       </body>
     </html>
