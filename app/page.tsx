@@ -148,29 +148,28 @@ export default function Home() {
               <div className="w-12 h-12 rounded-full bg-teal-900 border border-teal-600 flex items-center justify-center text-teal-300 font-bold text-xl mx-auto mb-4">
                 1
               </div>
-              <h3 className="font-semibold text-slate-200 mb-2">Start at 3.0</h3>
+              <h3 className="font-semibold text-slate-200 mb-2">Start</h3>
               <p className="text-slate-400 text-sm">
-                All new players begin with a 3.0 rating on a 2.0–8.0 scale, matching real-world
-                skill levels.
+                Players begin with an initial rating based on skill category or assessment
+                by an administrator.
               </p>
             </div>
             <div className="text-center">
               <div className="w-12 h-12 rounded-full bg-teal-900 border border-teal-600 flex items-center justify-center text-teal-300 font-bold text-xl mx-auto mb-4">
                 2
               </div>
-              <h3 className="font-semibold text-slate-200 mb-2">Play matches</h3>
+              <h3 className="font-semibold text-slate-200 mb-2">Play Matches</h3>
               <p className="text-slate-400 text-sm">
-                Record match results for singles or doubles. Score differentials also influence
-                rating changes.
+                Record match results for singles or doubles in type of play categories.
               </p>
             </div>
             <div className="text-center">
               <div className="w-12 h-12 rounded-full bg-teal-900 border border-teal-600 flex items-center justify-center text-teal-300 font-bold text-xl mx-auto mb-4">
                 3
               </div>
-              <h3 className="font-semibold text-slate-200 mb-2">Ratings update</h3>
+              <h3 className="font-semibold text-slate-200 mb-2">Ratings Update</h3>
               <p className="text-slate-400 text-sm">
-                Elo-based algorithm adjusts ratings immediately. Reliability grows as you play
+                Ratings adjust when scores are finalized. Reliability % grows as you play
                 more games.
               </p>
             </div>
