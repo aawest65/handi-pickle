@@ -1,13 +1,30 @@
-import NextAuth from "next-auth";
+import NextAuth, { DefaultSession } from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
-import { authConfig } from "@/auth.config";
+
+declare module "next-auth" {
+  interface Session {
+    user: {
+      onboardingComplete: boolean;
+      playerId: string | null;
+      role: string;
+    } & DefaultSession["user"];
+  }
+}
+
+declare module "@auth/core/jwt" {
+  interface JWT {
+    onboardingComplete: boolean;
+    playerId: string | null;
+    role: string;
+  }
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  ...authConfig,
+  trustHost: true,
   adapter: PrismaAdapter(prisma),
   providers: [
     Google({
@@ -31,12 +48,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
+  session: { strategy: "jwt" },
+  pages: {
+    signIn: "/login",
+  },
   callbacks: {
     async jwt({ token, user, trigger }) {
-      // On sign-in or session update, refresh player status from DB
-      if (user || trigger === "update") {
+      // On sign-in or session update, refresh player/role from DB
+      if ((user || trigger === "update") && token.sub) {
         const dbUser = await prisma.user.findUnique({
-          where: { id: token.sub! },
+          where: { id: token.sub },
           select: {
             role: true,
             player: { select: { id: true, onboardingComplete: true } },
