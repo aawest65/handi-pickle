@@ -19,11 +19,18 @@ export async function PATCH(
     return NextResponse.json({ error: "Rating must be between 1.0 and 8.0" }, { status: 400 });
   }
 
-  const player = await prisma.player.update({
-    where: { id: playerId },
-    data: { currentRating: Math.round(currentRating * 100) / 100 },
-    select: { id: true, name: true, currentRating: true },
-  });
+  let player;
+  try {
+    player = await prisma.player.update({
+      where: { id: playerId },
+      data: { currentRating: Math.round(currentRating * 100) / 100 },
+      select: { id: true, name: true, currentRating: true },
+    });
+  } catch (err) {
+    console.error("[PATCH /api/admin/players] prisma error:", err);
+    return NextResponse.json({ error: "Database error", detail: String(err) }, { status: 500 });
+  }
 
+  console.log("[PATCH /api/admin/players] updated:", player);
   return NextResponse.json(player);
 }
