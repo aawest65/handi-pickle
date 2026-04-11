@@ -29,9 +29,11 @@ export default async function proxy(req: NextRequest) {
         secret: secret!,
         salt: COOKIE_NAME,
       });
-    } catch {
-      // decode failed — treat as unauthenticated
+    } catch (e) {
+      console.error("[proxy] decode failed:", e);
     }
+  } else {
+    console.error("[proxy] no session cookie found, cookies:", JSON.stringify(req.cookies.getAll().map(c => c.name)));
   }
 
   const isLoggedIn = !!token;
