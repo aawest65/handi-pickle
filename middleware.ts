@@ -1,6 +1,5 @@
-import NextAuth from "next-auth";
-import { authConfig } from "./auth.config";
-import { NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
+import { NextRequest, NextResponse } from "next/server";
 
 // Routes that require a fully onboarded player
 const PROTECTED_ROUTES = ["/matches", "/profile"];
@@ -11,13 +10,23 @@ const AUTH_ONLY_ROUTES = ["/login", "/register"];
 // Routes that require ADMIN or SUPER_ADMIN role
 const ADMIN_ROUTES = ["/admin"];
 
-const { auth } = NextAuth(authConfig);
+// Cookie name used by AuthJS v5 in production (HTTPS) vs development (HTTP)
+const COOKIE_NAME =
+  process.env.NODE_ENV === "production"
+    ? "__Secure-authjs.session-token"
+    : "authjs.session-token";
 
-export default auth((req) => {
-  const session = req.auth;
-  const isLoggedIn = !!session?.user;
-  const onboardingComplete = session?.user?.onboardingComplete ?? false;
-  const role = session?.user?.role ?? "USER";
+export async function middleware(req: NextRequest) {
+  const token = await getToken({
+    req,
+    secret: process.env.AUTH_SECRET,
+    cookieName: COOKIE_NAME,
+    salt: COOKIE_NAME,
+  });
+
+  const isLoggedIn = !!token;
+  const onboardingComplete = (token?.onboardingComplete as boolean) ?? false;
+  const role = (token?.role as string) ?? "USER";
   const path = req.nextUrl.pathname;
 
   // Logged-in users visiting auth pages → redirect based on onboarding status
@@ -41,7 +50,9 @@ export default auth((req) => {
   // Admin routes — require ADMIN or SUPER_ADMIN
   if (ADMIN_ROUTES.some((r) => path.startsWith(r))) {
     if (!isLoggedIn) {
-      return NextResponse.redirect(new URL(`/login?callbackUrl=${encodeURIComponent(path)}`, req.nextUrl));
+      return NextResponse.redirect(
+        new URL(`/login?callbackUrl=${encodeURIComponent(path)}`, req.nextUrl)
+      );
     }
     if (role !== "ADMIN" && role !== "SUPER_ADMIN") {
       return NextResponse.redirect(new URL("/", req.nextUrl));
@@ -49,7 +60,7 @@ export default auth((req) => {
   }
 
   return NextResponse.next();
-});
+}
 
 export const config = {
   matcher: ["/((?!api|_next/static|_next/image|favicon.ico|icons).*)"],
