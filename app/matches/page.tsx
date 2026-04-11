@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 
 const GAME_TYPES = ["REC", "CLUB", "TOURNEY_REG", "TOURNEY_MEDAL"] as const;
 const GAME_TYPE_LABELS: Record<string, string> = {
@@ -57,6 +58,7 @@ function PlayerSelect({
 
 export default function MatchesPage() {
   const router = useRouter();
+  const { status } = useSession();
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -74,6 +76,12 @@ export default function MatchesPage() {
   const [team2Score, setTeam2Score]       = useState<number | "">(0);
 
   const isDoubles = format === "DOUBLES";
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login?callbackUrl=/matches");
+    }
+  }, [status, router]);
 
   useEffect(() => {
     fetch("/api/players")
@@ -143,6 +151,8 @@ export default function MatchesPage() {
       setLoading(false);
     }
   }
+
+  if (status === "loading" || status === "unauthenticated") return null;
 
   if (success) {
     return (
