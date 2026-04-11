@@ -10,6 +10,7 @@ declare module "next-auth" {
     user: {
       onboardingComplete: boolean;
       playerId: string | null;
+      role: string;
     } & DefaultSession["user"];
   }
 }
@@ -18,6 +19,7 @@ declare module "@auth/core/jwt" {
   interface JWT {
     onboardingComplete: boolean;
     playerId: string | null;
+    role: string;
   }
 }
 
@@ -53,18 +55,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user, trigger }) {
       // On sign-in or session update, refresh player status from DB
       if (user || trigger === "update") {
-        const player = await prisma.player.findUnique({
-          where: { userId: token.sub! },
-          select: { id: true, onboardingComplete: true },
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.sub! },
+          select: {
+            role: true,
+            player: { select: { id: true, onboardingComplete: true } },
+          },
         });
-        token.onboardingComplete = player?.onboardingComplete ?? false;
-        token.playerId = player?.id ?? null;
+        token.role = dbUser?.role ?? "USER";
+        token.onboardingComplete = dbUser?.player?.onboardingComplete ?? false;
+        token.playerId = dbUser?.player?.id ?? null;
       }
       return token;
     },
     async session({ session, token }) {
       session.user.onboardingComplete = (token.onboardingComplete as boolean) ?? false;
       session.user.playerId = (token.playerId as string | null) ?? null;
+      session.user.role = (token.role as string) ?? "USER";
       return session;
     },
   },

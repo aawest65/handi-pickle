@@ -4,7 +4,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 model Account {
@@ -43,6 +43,12 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+enum Role {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -50,6 +56,7 @@ model User {
   emailVerified DateTime?
   image         String?
   password      String?
+  role          Role      @default(USER)
 
   accounts Account[]
   sessions Session[]
@@ -57,17 +64,23 @@ model User {
 }
 
 model Player {
-  id                String   @id @default(cuid())
-  userId            String   @unique
-  name              String
-  gender            String   // MALE | FEMALE
-  age               Int
-  city              String?
-  state             String?
-  selfRatedCategory String   @default("NOVICE")
-  currentRating     Float    @default(3.0)
-  gamesPlayed       Int      @default(0)
-  createdAt         DateTime @default(now())
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  name               String
+  gender             String   // MALE | FEMALE
+  age                Int
+  city               String?
+  state              String?
+  selfRatedCategory  String   @default("NOVICE")
+  currentRating      Float    @default(3.0)
+  gamesPlayed        Int      @default(0)
+  createdAt          DateTime @default(now())
+  dominantHand       String?  // RIGHT | LEFT | AMBIDEXTROUS
+  yearsPlaying       Int?
+  preferredFormat    String?  // SINGLES | DOUBLES | BOTH
+  duprRating         Float?
+  avatarUrl          String?
+  onboardingComplete Boolean  @default(false)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
