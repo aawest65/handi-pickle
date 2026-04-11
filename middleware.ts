@@ -1,4 +1,5 @@
-import { auth } from "@/lib/auth";
+import NextAuth from "next-auth";
+import { authConfig } from "./auth.config";
 import { NextResponse } from "next/server";
 
 // Routes that require a fully onboarded player
@@ -9,6 +10,8 @@ const AUTH_ONLY_ROUTES = ["/login", "/register"];
 
 // Routes that require ADMIN or SUPER_ADMIN role
 const ADMIN_ROUTES = ["/admin"];
+
+const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {
   const session = req.auth;
