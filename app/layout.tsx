@@ -5,6 +5,8 @@ import "./globals.css";
 import Providers from "@/app/components/Providers";
 import NavAuth from "@/app/components/NavAuth";
 import BottomNav from "@/app/components/BottomNav";
+import GuestBanner from "@/app/components/GuestBanner";
+import InstallPrompt from "@/app/components/InstallPrompt";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -94,6 +96,8 @@ export default function RootLayout({
             <p>HandiPick &mdash; Your pickleball handicap system</p>
           </footer>
           <BottomNav />
+          <GuestBanner />
+          <InstallPrompt />
         </Providers>
       </body>
     </html>
