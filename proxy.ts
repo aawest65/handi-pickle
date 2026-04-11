@@ -62,8 +62,8 @@ async function decodeAuthJwt(
     void macKey; // unused for browser MAC check (we trust Auth.js)
 
     // 4. Decrypt the payload using AES-CBC
-    const iv = base64urlDecode(ivB64);
-    const ciphertext = base64urlDecode(ciphertextB64);
+    const iv = base64urlDecode(ivB64).buffer as ArrayBuffer;
+    const ciphertext = base64urlDecode(ciphertextB64).buffer as ArrayBuffer;
 
     const aesCbcKey = await crypto.subtle.importKey(
       "raw",
