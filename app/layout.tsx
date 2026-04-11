@@ -4,6 +4,7 @@ import Link from "next/link";
 import "./globals.css";
 import Providers from "@/app/components/Providers";
 import NavAuth from "@/app/components/NavAuth";
+import BottomNav from "@/app/components/BottomNav";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -60,7 +61,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-slate-950 text-slate-100">
         <Providers>
-          <nav className="bg-navy-900 border-b border-teal-700/40 bg-slate-900 shadow-lg">
+          <nav className="bg-slate-900 border-b border-teal-700/40 shadow-lg">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex items-center justify-between h-16">
                 <div className="flex items-center gap-2">
@@ -69,9 +70,10 @@ export default function RootLayout({
                     href="/"
                     className="text-teal-400 font-bold text-lg tracking-tight hover:text-teal-300 transition-colors"
                   >
-                    HandiPick (your pickleball handicap)
+                    HandiPick
                   </Link>
                 </div>
+                {/* Desktop nav links */}
                 <div className="hidden md:flex items-center gap-1">
                   {navLinks.map((link) => (
                     <Link
@@ -83,26 +85,15 @@ export default function RootLayout({
                     </Link>
                   ))}
                 </div>
-                {/* Mobile nav - simplified */}
-                <div className="md:hidden flex items-center gap-1">
-                  {navLinks.slice(0, 4).map((link) => (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      className="px-2 py-1 rounded text-xs font-medium text-slate-300 hover:text-teal-400 transition-colors"
-                    >
-                      {link.label}
-                    </Link>
-                  ))}
-                </div>
                 <NavAuth />
               </div>
             </div>
           </nav>
-          <main className="flex-1">{children}</main>
-          <footer className="bg-slate-900 border-t border-slate-800 py-6 text-center text-slate-500 text-sm">
+          <main className="flex-1 pb-20 md:pb-0">{children}</main>
+          <footer className="hidden md:block bg-slate-900 border-t border-slate-800 py-6 text-center text-slate-500 text-sm">
             <p>HandiPick &mdash; Your pickleball handicap system</p>
           </footer>
+          <BottomNav />
         </Providers>
       </body>
     </html>
