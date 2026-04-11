@@ -17,12 +17,13 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { name, gender, dateOfBirth, selfRatedCategory, email: emailOverride } = body as {
+  const { name, gender, dateOfBirth, selfRatedCategory, email: emailOverride, overrideRating } = body as {
     name: string;
     gender: string;
     dateOfBirth: string;
     selfRatedCategory: string;
     email?: string;
+    overrideRating?: number;
   };
 
   if (!name?.trim()) {
@@ -57,6 +58,15 @@ export async function POST(req: NextRequest) {
   const password = await bcrypt.hash(crypto.randomBytes(24).toString("hex"), 10);
   const category = selfRatedCategory as Category;
 
+  // Use override rating if provided and valid, otherwise use category default
+  let initialRating = CATEGORY_INITIAL_RATING[category];
+  if (overrideRating !== undefined) {
+    if (typeof overrideRating !== "number" || overrideRating < 1.0 || overrideRating > 8.0) {
+      return NextResponse.json({ error: "Override rating must be between 1.0 and 8.0" }, { status: 400 });
+    }
+    initialRating = Math.round(overrideRating * 100) / 100;
+  }
+
   const user = await prisma.user.create({
     data: {
       email,
@@ -68,7 +78,7 @@ export async function POST(req: NextRequest) {
           gender,
           dateOfBirth: dob,
           selfRatedCategory: category,
-          currentRating: CATEGORY_INITIAL_RATING[category],
+          currentRating: initialRating,
           onboardingComplete: true, // admin-created players are immediately active
         },
       },

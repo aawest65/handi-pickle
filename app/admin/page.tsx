@@ -53,10 +53,16 @@ export default function AdminPage() {
   // Add player form state
   const [showAddPlayer, setShowAddPlayer] = useState(false);
   const [addForm, setAddForm] = useState({
-    name: "", gender: "MALE", dateOfBirth: "", selfRatedCategory: "NOVICE", email: "",
+    name: "", gender: "MALE", dateOfBirth: "", selfRatedCategory: "NOVICE", email: "", overrideRating: "",
   });
   const [addError, setAddError] = useState("");
   const [addLoading, setAddLoading] = useState(false);
+
+  // Edit rating state
+  const [editRatingPlayerId, setEditRatingPlayerId] = useState<string | null>(null);
+  const [editRatingValue, setEditRatingValue] = useState("");
+  const [editRatingLoading, setEditRatingLoading] = useState(false);
+  const [editRatingError, setEditRatingError] = useState("");
 
   // Reassign player state
   const [showReassign, setShowReassign] = useState(false);
@@ -99,20 +105,51 @@ export default function AdminPage() {
     setAddError("");
     setAddLoading(true);
     try {
+      const payload: Record<string, unknown> = { ...addForm };
+      if (addForm.overrideRating) payload.overrideRating = parseFloat(addForm.overrideRating);
       const res = await fetch("/api/admin/players", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(addForm),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) { setAddError(data.error ?? "Failed to create player"); return; }
       setShowAddPlayer(false);
-      setAddForm({ name: "", gender: "MALE", dateOfBirth: "", selfRatedCategory: "NOVICE", email: "" });
+      setAddForm({ name: "", gender: "MALE", dateOfBirth: "", selfRatedCategory: "NOVICE", email: "", overrideRating: "" });
       loadUsers();
     } catch {
       setAddError("Network error");
     } finally {
       setAddLoading(false);
+    }
+  }
+
+  async function handleEditRating(playerId: string) {
+    const val = parseFloat(editRatingValue);
+    if (isNaN(val) || val < 1.0 || val > 8.0) {
+      setEditRatingError("Rating must be between 1.0 and 8.0");
+      return;
+    }
+    setEditRatingLoading(true);
+    setEditRatingError("");
+    try {
+      const res = await fetch(`/api/admin/players/${playerId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentRating: val }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setEditRatingError(data.error ?? "Failed to update"); return; }
+      setUsers((prev) => prev.map((u) =>
+        u.player?.id === playerId
+          ? { ...u, player: { ...u.player!, currentRating: data.currentRating } }
+          : u
+      ));
+      setEditRatingPlayerId(null);
+    } catch {
+      setEditRatingError("Network error");
+    } finally {
+      setEditRatingLoading(false);
     }
   }
 
@@ -214,8 +251,47 @@ export default function AdminPage() {
                   </td>
                   <td className="px-4 py-3 text-center hidden sm:table-cell">
                     {user.player ? (
-                      <span className="font-semibold text-teal-400">{user.player.currentRating.toFixed(2)}</span>
+                      editRatingPlayerId === user.player.id ? (
+                        <div className="flex items-center gap-1 justify-center">
+                          <input
+                            type="number"
+                            step="0.05"
+                            min="1.0"
+                            max="8.0"
+                            value={editRatingValue}
+                            onChange={(e) => setEditRatingValue(e.target.value)}
+                            className="w-20 bg-slate-800 border border-teal-500 text-slate-100 rounded px-2 py-1 text-xs text-center focus:outline-none"
+                            autoFocus
+                          />
+                          <button
+                            onClick={() => handleEditRating(user.player!.id)}
+                            disabled={editRatingLoading}
+                            className="text-teal-400 hover:text-teal-300 text-xs font-semibold disabled:opacity-50"
+                          >✓</button>
+                          <button
+                            onClick={() => { setEditRatingPlayerId(null); setEditRatingError(""); }}
+                            className="text-slate-500 hover:text-slate-300 text-xs"
+                          >✕</button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            if (isSuperAdmin) {
+                              setEditRatingPlayerId(user.player!.id);
+                              setEditRatingValue(user.player!.currentRating.toFixed(2));
+                              setEditRatingError("");
+                            }
+                          }}
+                          className={`font-semibold text-teal-400 ${isSuperAdmin ? "hover:text-teal-300 underline decoration-dotted cursor-pointer" : "cursor-default"}`}
+                          title={isSuperAdmin ? "Click to edit rating" : undefined}
+                        >
+                          {user.player.currentRating.toFixed(2)}
+                        </button>
+                      )
                     ) : <span className="text-slate-600">—</span>}
+                    {editRatingPlayerId === user.player?.id && editRatingError && (
+                      <div className="text-red-400 text-xs mt-1">{editRatingError}</div>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-center hidden sm:table-cell text-slate-300">
                     {user.player?.gamesPlayed ?? <span className="text-slate-600">—</span>}
@@ -330,6 +406,28 @@ export default function AdminPage() {
                   placeholder="auto: firstname.lastname@example.com"
                 />
               </div>
+
+              {isSuperAdmin && (
+                <div className="border-t border-slate-700 pt-4">
+                  <label className="block text-xs font-medium text-slate-400 mb-1">
+                    Override Starting Rating
+                    <span className="text-slate-600 ml-1">(optional — leave blank to use category default)</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.05"
+                    min="1.0"
+                    max="8.0"
+                    value={addForm.overrideRating}
+                    onChange={(e) => setAddForm((f) => ({ ...f, overrideRating: e.target.value }))}
+                    className={INPUT}
+                    placeholder={`Default: ${CATEGORIES.find(c => c.value === addForm.selfRatedCategory)?.rating.toFixed(1) ?? "—"}`}
+                  />
+                  <p className="text-xs text-slate-600 mt-1">
+                    Must be between 1.0 and 8.0. This sets where the player starts in the rating system.
+                  </p>
+                </div>
+              )}
 
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowAddPlayer(false)} className={BTN_GHOST}>
