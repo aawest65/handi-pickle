@@ -28,41 +28,41 @@ const DRY_RUN = process.argv.includes("--dry-run");
 const BASE_URL = "https://www.picklewave.com";
 
 // ─── Known Pro Players ────────────────────────────────────────────────────────
-// Name (as it appears in URL slugs, title-cased) → { gender, age as of 2026 }
-const KNOWN_PLAYERS: Record<string, { gender: "MALE" | "FEMALE"; age: number }> = {
-  "Anna Leigh Waters":   { gender: "FEMALE", age: 20 },
-  "Anna Bright":         { gender: "FEMALE", age: 27 },
-  "Jessie Irvine":       { gender: "FEMALE", age: 34 },
-  "Catherine Parenteau": { gender: "FEMALE", age: 30 },
-  "Lea Jansen":          { gender: "FEMALE", age: 30 },
-  "Parris Todd":         { gender: "FEMALE", age: 24 },
-  "Simone Jardim":       { gender: "FEMALE", age: 41 },
-  "Callie Smith":        { gender: "FEMALE", age: 28 },
-  "Lucy Kovalova":       { gender: "FEMALE", age: 34 },
-  "Meghan Dizon":        { gender: "FEMALE", age: 28 },
-  "Tina Pisnik":         { gender: "FEMALE", age: 37 },
-  "Hurricane Tyra Black":{ gender: "FEMALE", age: 29 },
-  "Jade Kawamoto":       { gender: "FEMALE", age: 28 },
-  "Brooke Buckner":      { gender: "FEMALE", age: 28 },
-  "Paris Todd":          { gender: "FEMALE", age: 24 },
-  "Georgia Johnson":     { gender: "FEMALE", age: 24 },
-  "Ben Johns":           { gender: "MALE",   age: 27 },
-  "Collin Johns":        { gender: "MALE",   age: 30 },
-  "Matt Wright":         { gender: "MALE",   age: 38 },
-  "Riley Newman":        { gender: "MALE",   age: 29 },
-  "J.W. Johnson":        { gender: "MALE",   age: 23 },
-  "Federico Staksrud":   { gender: "MALE",   age: 30 },
-  "Tyson McGuffin":      { gender: "MALE",   age: 33 },
-  "Zane Navratil":       { gender: "MALE",   age: 31 },
-  "Jay Devilliers":      { gender: "MALE",   age: 36 },
-  "Dylan Frazier":       { gender: "MALE",   age: 25 },
-  "Hunter Johnson":      { gender: "MALE",   age: 22 },
-  "Will Howells":        { gender: "MALE",   age: 28 },
-  "Eric Oncins":         { gender: "MALE",   age: 34 },
-  "Gabriel Tardio":      { gender: "MALE",   age: 27 },
-  "Christian Alshon":    { gender: "MALE",   age: 28 },
-  "Andrei Daescu":       { gender: "MALE",   age: 28 },
-  "Kaitlyn Christian":   { gender: "FEMALE", age: 29 },
+// Name (as it appears in URL slugs, title-cased) → { gender, birthYear as of 2026 }
+const KNOWN_PLAYERS: Record<string, { gender: "MALE" | "FEMALE"; birthYear: number }> = {
+  "Anna Leigh Waters":   { gender: "FEMALE", birthYear: 2006 },
+  "Anna Bright":         { gender: "FEMALE", birthYear: 1999 },
+  "Jessie Irvine":       { gender: "FEMALE", birthYear: 1992 },
+  "Catherine Parenteau": { gender: "FEMALE", birthYear: 1996 },
+  "Lea Jansen":          { gender: "FEMALE", birthYear: 1996 },
+  "Parris Todd":         { gender: "FEMALE", birthYear: 2002 },
+  "Simone Jardim":       { gender: "FEMALE", birthYear: 1985 },
+  "Callie Smith":        { gender: "FEMALE", birthYear: 1998 },
+  "Lucy Kovalova":       { gender: "FEMALE", birthYear: 1992 },
+  "Meghan Dizon":        { gender: "FEMALE", birthYear: 1998 },
+  "Tina Pisnik":         { gender: "FEMALE", birthYear: 1989 },
+  "Hurricane Tyra Black":{ gender: "FEMALE", birthYear: 1997 },
+  "Jade Kawamoto":       { gender: "FEMALE", birthYear: 1998 },
+  "Brooke Buckner":      { gender: "FEMALE", birthYear: 1998 },
+  "Paris Todd":          { gender: "FEMALE", birthYear: 2002 },
+  "Georgia Johnson":     { gender: "FEMALE", birthYear: 2002 },
+  "Ben Johns":           { gender: "MALE",   birthYear: 1999 },
+  "Collin Johns":        { gender: "MALE",   birthYear: 1996 },
+  "Matt Wright":         { gender: "MALE",   birthYear: 1988 },
+  "Riley Newman":        { gender: "MALE",   birthYear: 1997 },
+  "J.W. Johnson":        { gender: "MALE",   birthYear: 2003 },
+  "Federico Staksrud":   { gender: "MALE",   birthYear: 1996 },
+  "Tyson McGuffin":      { gender: "MALE",   birthYear: 1993 },
+  "Zane Navratil":       { gender: "MALE",   birthYear: 1995 },
+  "Jay Devilliers":      { gender: "MALE",   birthYear: 1990 },
+  "Dylan Frazier":       { gender: "MALE",   birthYear: 2001 },
+  "Hunter Johnson":      { gender: "MALE",   birthYear: 2004 },
+  "Will Howells":        { gender: "MALE",   birthYear: 1998 },
+  "Eric Oncins":         { gender: "MALE",   birthYear: 1992 },
+  "Gabriel Tardio":      { gender: "MALE",   birthYear: 1999 },
+  "Christian Alshon":    { gender: "MALE",   birthYear: 1998 },
+  "Andrei Daescu":       { gender: "MALE",   birthYear: 1998 },
+  "Kaitlyn Christian":   { gender: "FEMALE", birthYear: 1997 },
 };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -282,8 +282,9 @@ function slugEmail(name: string): string {
 async function upsertPlayer(name: string): Promise<string> {
   const email  = slugEmail(name);
   const info   = KNOWN_PLAYERS[name];
-  const gender = info?.gender ?? "FEMALE";   // default female (common in ALW's events)
-  const age    = info?.age ?? 28;
+  const gender      = info?.gender ?? "FEMALE";   // default female (common in ALW's events)
+  const birthYear   = info?.birthYear ?? 1998;
+  const dateOfBirth = new Date(`${birthYear}-06-15`);
 
   const user = await prisma.user.upsert({
     where:  { email },
@@ -298,7 +299,7 @@ async function upsertPlayer(name: string): Promise<string> {
       userId:            user.id,
       name,
       gender,
-      age,
+      dateOfBirth,
       selfRatedCategory: "PRO",
       currentRating:     6.0,
     },

@@ -11,11 +11,16 @@ import { prisma } from "../lib/prisma";
 import bcrypt from "bcryptjs";
 import { CATEGORY_INITIAL_RATING } from "../lib/rating/algorithm";
 
+// birthYear produces a dateOfBirth using the pickleball age rule
+function dobFromYear(birthYear: number): Date {
+  return new Date(`${birthYear}-06-15`);
+}
+
 async function createUserAndPlayer(
   firstName: string,
   lastName: string,
   gender: "MALE" | "FEMALE",
-  age: number,
+  birthYear: number,
   category: "NOVICE" | "INTERMEDIATE" | "ADVANCED" | "PRO" = "NOVICE"
 ) {
   const email    = `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`;
@@ -34,7 +39,7 @@ async function createUserAndPlayer(
       userId:            user.id,
       name:              `${firstName} ${lastName}`,
       gender,
-      age,
+      dateOfBirth:       dobFromYear(birthYear),
       selfRatedCategory: category,
       currentRating:     CATEGORY_INITIAL_RATING[category],
     },
@@ -46,14 +51,14 @@ async function createUserAndPlayer(
 async function main() {
   console.log("🌱  Starting seed...");
 
-  await createUserAndPlayer("Alex",    "Turner",   "MALE",   28, "PRO");
-  await createUserAndPlayer("Marcus",  "Johnson",  "MALE",   35, "ADVANCED");
-  await createUserAndPlayer("Derek",   "Chen",     "MALE",   42, "INTERMEDIATE");
-  await createUserAndPlayer("Ryan",    "Patel",    "MALE",   51, "NOVICE");
-  await createUserAndPlayer("Sarah",   "Williams", "FEMALE", 31, "PRO");
-  await createUserAndPlayer("Jessica", "Lee",      "FEMALE", 26, "INTERMEDIATE");
-  await createUserAndPlayer("Amanda",  "Brooks",   "FEMALE", 47, "NOVICE");
-  await createUserAndPlayer("Priya",   "Sharma",   "FEMALE", 58, "NOVICE");
+  await createUserAndPlayer("Alex",    "Turner",   "MALE",   1998, "PRO");
+  await createUserAndPlayer("Marcus",  "Johnson",  "MALE",   1991, "ADVANCED");
+  await createUserAndPlayer("Derek",   "Chen",     "MALE",   1984, "INTERMEDIATE");
+  await createUserAndPlayer("Ryan",    "Patel",    "MALE",   1975, "NOVICE");
+  await createUserAndPlayer("Sarah",   "Williams", "FEMALE", 1995, "PRO");
+  await createUserAndPlayer("Jessica", "Lee",      "FEMALE", 2000, "INTERMEDIATE");
+  await createUserAndPlayer("Amanda",  "Brooks",   "FEMALE", 1979, "NOVICE");
+  await createUserAndPlayer("Priya",   "Sharma",   "FEMALE", 1968, "NOVICE");
 
   console.log("✅  Seed complete — 8 players created.");
 }

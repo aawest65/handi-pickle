@@ -9,7 +9,7 @@ export default function ProfileSetupPage() {
   const { data: session, status } = useSession();
 
   const [displayName, setDisplayName] = useState("");
-  const [age, setAge] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [gender, setGender] = useState<"MALE" | "FEMALE">("MALE");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
@@ -40,9 +40,9 @@ export default function ProfileSetupPage() {
       return;
     }
 
-    const ageNum = Number(age);
-    if (!age || isNaN(ageNum) || ageNum < 5 || ageNum > 100) {
-      setError("Age must be a number between 5 and 100.");
+    const dob = new Date(dateOfBirth);
+    if (!dateOfBirth || isNaN(dob.getTime()) || dob >= new Date()) {
+      setError("A valid date of birth is required.");
       return;
     }
 
@@ -56,7 +56,7 @@ export default function ProfileSetupPage() {
       const res = await fetch("/api/players", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: displayName.trim(), age: Number(age), gender, city: city.trim(), state: state.trim(), selfRatedCategory }),
+        body: JSON.stringify({ name: displayName.trim(), dateOfBirth, gender, city: city.trim(), state: state.trim(), selfRatedCategory }),
       });
 
       if (res.status === 201 || res.status === 409) {
@@ -119,24 +119,25 @@ export default function ProfileSetupPage() {
             />
           </div>
 
-          {/* Age */}
+          {/* Date of Birth */}
           <div>
-            <label
-              htmlFor="age"
-              className="block text-sm font-medium text-slate-300 mb-1"
-            >
-              Age
+            <label htmlFor="dateOfBirth" className="block text-sm font-medium text-slate-300 mb-1">
+              Date of Birth
             </label>
             <input
-              id="age"
-              type="number"
-              min={5}
-              max={100}
-              value={age}
-              onChange={(e) => setAge(e.target.value)}
-              className="w-full rounded-lg bg-slate-800 border border-slate-600 px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500 transition"
-              placeholder="Your age"
+              id="dateOfBirth"
+              type="date"
+              value={dateOfBirth}
+              onChange={(e) => setDateOfBirth(e.target.value)}
+              max={new Date().toISOString().split("T")[0]}
+              min="1924-01-01"
+              className="w-full rounded-lg bg-slate-800 border border-slate-600 px-3 py-2 text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500 transition"
             />
+            {dateOfBirth && (
+              <p className="mt-1 text-xs text-slate-500">
+                Pickleball age for {new Date().getFullYear()}: <span className="text-teal-400 font-medium">{new Date().getFullYear() - new Date(dateOfBirth).getFullYear()}</span>
+              </p>
+            )}
           </div>
 
           {/* City & State */}
