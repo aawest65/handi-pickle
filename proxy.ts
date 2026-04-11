@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { decode } from "next-auth/jwt";
 
 // Routes that require a fully onboarded player
@@ -17,10 +16,11 @@ const COOKIE_NAME =
     : "authjs.session-token";
 
 export default async function proxy(req: NextRequest) {
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get(COOKIE_NAME)?.value;
+  // Read the session cookie directly from the request
+  const sessionCookie = req.cookies.get(COOKIE_NAME)?.value;
 
   let token: Record<string, unknown> | null = null;
+
   if (sessionCookie) {
     const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
     try {
@@ -30,7 +30,7 @@ export default async function proxy(req: NextRequest) {
         salt: COOKIE_NAME,
       });
     } catch {
-      token = null;
+      // decode failed — treat as unauthenticated
     }
   }
 
