@@ -29,21 +29,51 @@ const ROLE_COLORS: Record<string, string> = {
   SUPER_ADMIN: "bg-yellow-900/50 text-yellow-300 border border-yellow-700/50",
 };
 
+const CATEGORIES = [
+  { value: "NOVICE",       label: "Novice",       rating: 2.0 },
+  { value: "INTERMEDIATE", label: "Intermediate", rating: 3.5 },
+  { value: "ADVANCED",     label: "Advanced",     rating: 4.5 },
+  { value: "PRO",          label: "Pro",          rating: 6.0 },
+] as const;
+
+const INPUT = "w-full bg-slate-800 border border-slate-600 text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500";
+const BTN_PRIMARY = "px-4 py-2 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors";
+const BTN_GHOST = "px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm rounded-lg transition-colors";
+
 export default function AdminPage() {
   const { data: session } = useSession();
   const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
+  const isAdmin = session?.user?.role === "ADMIN" || isSuperAdmin;
 
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [updating, setUpdating] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Add player form state
+  const [showAddPlayer, setShowAddPlayer] = useState(false);
+  const [addForm, setAddForm] = useState({
+    name: "", gender: "MALE", dateOfBirth: "", selfRatedCategory: "NOVICE", email: "",
+  });
+  const [addError, setAddError] = useState("");
+  const [addLoading, setAddLoading] = useState(false);
+
+  // Reassign player state
+  const [showReassign, setShowReassign] = useState(false);
+  const [reassignPlayerId, setReassignPlayerId] = useState("");
+  const [reassignTargetUserId, setReassignTargetUserId] = useState("");
+  const [reassignError, setReassignError] = useState("");
+  const [reassignLoading, setReassignLoading] = useState(false);
+
+  function loadUsers() {
+    setLoading(true);
     fetch("/api/admin/users")
       .then((r) => r.json())
       .then((data) => { setUsers(data); setLoading(false); })
       .catch(() => { setError("Failed to load users."); setLoading(false); });
-  }, []);
+  }
+
+  useEffect(() => { loadUsers(); }, []);
 
   async function updateRole(userId: string, role: string) {
     setUpdating(userId);
@@ -64,28 +94,87 @@ export default function AdminPage() {
     }
   }
 
+  async function handleAddPlayer(e: React.FormEvent) {
+    e.preventDefault();
+    setAddError("");
+    setAddLoading(true);
+    try {
+      const res = await fetch("/api/admin/players", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(addForm),
+      });
+      const data = await res.json();
+      if (!res.ok) { setAddError(data.error ?? "Failed to create player"); return; }
+      setShowAddPlayer(false);
+      setAddForm({ name: "", gender: "MALE", dateOfBirth: "", selfRatedCategory: "NOVICE", email: "" });
+      loadUsers();
+    } catch {
+      setAddError("Network error");
+    } finally {
+      setAddLoading(false);
+    }
+  }
+
+  async function handleReassign(e: React.FormEvent) {
+    e.preventDefault();
+    setReassignError("");
+    setReassignLoading(true);
+    try {
+      const res = await fetch(`/api/admin/players/${reassignPlayerId}/reassign`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetUserId: reassignTargetUserId, deleteOldUser: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setReassignError(data.error ?? "Failed to reassign"); return; }
+      setShowReassign(false);
+      setReassignPlayerId("");
+      setReassignTargetUserId("");
+      loadUsers();
+    } catch {
+      setReassignError("Network error");
+    } finally {
+      setReassignLoading(false);
+    }
+  }
+
+  const playersWithUsers = users.filter((u) => u.player);
+  const usersWithoutPlayer = users.filter((u) => !u.player);
+  const selectedPlayerUser = users.find((u) => u.player?.id === reassignPlayerId);
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-100">Admin Dashboard</h1>
-        <p className="text-slate-400 mt-1 text-sm">
-          Manage users and roles · You are a{" "}
-          <span className="text-yellow-400 font-medium">{ROLE_LABELS[session?.user?.role ?? "USER"]}</span>
-        </p>
+      <div className="mb-8 flex items-start justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-100">Admin Dashboard</h1>
+          <p className="text-slate-400 mt-1 text-sm">
+            Manage users and roles · You are a{" "}
+            <span className="text-yellow-400 font-medium">{ROLE_LABELS[session?.user?.role ?? "USER"]}</span>
+          </p>
+        </div>
+        {isAdmin && (
+          <div className="flex gap-2">
+            <button onClick={() => { setShowReassign(true); setReassignError(""); }} className={BTN_GHOST}>
+              Reassign Player
+            </button>
+            <button onClick={() => { setShowAddPlayer(true); setAddError(""); }} className={BTN_PRIMARY}>
+              + Add Player
+            </button>
+          </div>
+        )}
       </div>
 
       {error && (
-        <div className="mb-4 px-4 py-3 rounded-lg bg-red-900/40 border border-red-700 text-red-300 text-sm">
-          {error}
-        </div>
+        <div className="mb-4 px-4 py-3 rounded-lg bg-red-900/40 border border-red-700 text-red-300 text-sm">{error}</div>
       )}
 
       {/* Stats row */}
       <div className="grid grid-cols-3 gap-4 mb-8">
         {[
-          { label: "Total Users", value: users.length },
-          { label: "Admins", value: users.filter((u) => u.role === "ADMIN" || u.role === "SUPER_ADMIN").length },
-          { label: "Active Players", value: users.filter((u) => u.player?.onboardingComplete).length },
+          { label: "Total Users",     value: users.length },
+          { label: "Admins",          value: users.filter((u) => u.role === "ADMIN" || u.role === "SUPER_ADMIN").length },
+          { label: "Active Players",  value: users.filter((u) => u.player?.onboardingComplete).length },
         ].map((stat) => (
           <div key={stat.label} className="bg-slate-900 border border-slate-700 rounded-xl p-4 text-center">
             <p className="text-2xl font-bold text-teal-400">{stat.value}</p>
@@ -112,24 +201,20 @@ export default function AdminPage() {
             </thead>
             <tbody>
               {users.map((user, idx) => (
-                <tr
-                  key={user.id}
-                  className={`border-b border-slate-800 ${idx % 2 === 0 ? "bg-slate-900/60" : "bg-slate-800/20"}`}
-                >
+                <tr key={user.id} className={`border-b border-slate-800 ${idx % 2 === 0 ? "bg-slate-900/60" : "bg-slate-800/20"}`}>
                   <td className="px-4 py-3">
-                    <div className="font-medium text-slate-200 truncate max-w-[180px]">
-                      {user.name ?? "—"}
-                    </div>
-                    <div className="text-xs text-slate-500 truncate max-w-[180px]">{user.email}</div>
-                    {!user.player?.onboardingComplete && (
+                    <div className="font-medium text-slate-200 truncate max-w-[200px]">{user.name ?? "—"}</div>
+                    <div className="text-xs text-slate-500 truncate max-w-[200px]">{user.email}</div>
+                    {user.email?.endsWith("@example.com") && (
+                      <span className="text-xs text-amber-400">Placeholder account</span>
+                    )}
+                    {user.player && !user.player.onboardingComplete && (
                       <span className="text-xs text-amber-500">Incomplete onboarding</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-center hidden sm:table-cell">
                     {user.player ? (
-                      <span className="font-semibold text-teal-400">
-                        {user.player.currentRating.toFixed(2)}
-                      </span>
+                      <span className="font-semibold text-teal-400">{user.player.currentRating.toFixed(2)}</span>
                     ) : <span className="text-slate-600">—</span>}
                   </td>
                   <td className="px-4 py-3 text-center hidden sm:table-cell text-slate-300">
@@ -157,6 +242,185 @@ export default function AdminPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* ── Add Player Modal ── */}
+      {showAddPlayer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-6">
+            <h2 className="text-lg font-bold text-teal-400 mb-1">Add Player</h2>
+            <p className="text-xs text-slate-500 mb-5">
+              Creates a placeholder account ({"{name}"}@example.com) immediately active for match recording.
+              The real player can claim it later via Reassign Player.
+            </p>
+
+            {addError && (
+              <div className="mb-4 px-3 py-2 rounded-lg bg-red-900/40 border border-red-700 text-red-300 text-sm">{addError}</div>
+            )}
+
+            <form onSubmit={handleAddPlayer} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Full Name *</label>
+                <input
+                  value={addForm.name}
+                  onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))}
+                  className={INPUT}
+                  placeholder="e.g. John Smith"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1">Gender *</label>
+                  <select
+                    value={addForm.gender}
+                    onChange={(e) => setAddForm((f) => ({ ...f, gender: e.target.value }))}
+                    className={INPUT}
+                  >
+                    <option value="MALE">Male</option>
+                    <option value="FEMALE">Female</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1">Date of Birth *</label>
+                  <input
+                    type="date"
+                    value={addForm.dateOfBirth}
+                    onChange={(e) => setAddForm((f) => ({ ...f, dateOfBirth: e.target.value }))}
+                    max={new Date().toISOString().split("T")[0]}
+                    min="1924-01-01"
+                    className={INPUT}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Skill Level *</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {CATEGORIES.map((cat) => (
+                    <button
+                      key={cat.value}
+                      type="button"
+                      onClick={() => setAddForm((f) => ({ ...f, selfRatedCategory: cat.value }))}
+                      className={`text-left px-3 py-2 rounded-lg border text-xs transition-all ${
+                        addForm.selfRatedCategory === cat.value
+                          ? "border-teal-500 bg-teal-900/30 text-slate-100"
+                          : "border-slate-600 bg-slate-800 text-slate-400 hover:border-slate-500"
+                      }`}
+                    >
+                      <div className="font-semibold">{cat.label}</div>
+                      <div className="text-teal-400 mt-0.5">Starting: {cat.rating.toFixed(1)}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">
+                  Email <span className="text-slate-600">(optional — auto-generated if blank)</span>
+                </label>
+                <input
+                  type="email"
+                  value={addForm.email}
+                  onChange={(e) => setAddForm((f) => ({ ...f, email: e.target.value }))}
+                  className={INPUT}
+                  placeholder="auto: firstname.lastname@example.com"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowAddPlayer(false)} className={BTN_GHOST}>
+                  Cancel
+                </button>
+                <button type="submit" disabled={addLoading} className={`flex-1 ${BTN_PRIMARY}`}>
+                  {addLoading ? "Creating…" : "Create Player"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Reassign Player Modal ── */}
+      {showReassign && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-6">
+            <h2 className="text-lg font-bold text-teal-400 mb-1">Reassign Player</h2>
+            <p className="text-xs text-slate-500 mb-5">
+              Moves a player profile (and all match history) to a real user account.
+              If the old account is a placeholder (@example.com), it will be deleted.
+            </p>
+
+            {reassignError && (
+              <div className="mb-4 px-3 py-2 rounded-lg bg-red-900/40 border border-red-700 text-red-300 text-sm">{reassignError}</div>
+            )}
+
+            <form onSubmit={handleReassign} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Player to reassign *</label>
+                <select
+                  value={reassignPlayerId}
+                  onChange={(e) => setReassignPlayerId(e.target.value)}
+                  className={INPUT}
+                  required
+                >
+                  <option value="">— select player —</option>
+                  {playersWithUsers.map((u) => (
+                    <option key={u.player!.id} value={u.player!.id}>
+                      {u.name} ({u.email}) · {u.player!.currentRating.toFixed(2)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedPlayerUser && (
+                <div className="px-3 py-2 bg-slate-800 rounded-lg text-xs text-slate-400">
+                  Current account: <span className="text-slate-200">{selectedPlayerUser.email}</span>
+                  {selectedPlayerUser.email?.endsWith("@example.com") && (
+                    <span className="ml-2 text-amber-400">· placeholder (will be deleted)</span>
+                  )}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Assign to user *</label>
+                <select
+                  value={reassignTargetUserId}
+                  onChange={(e) => setReassignTargetUserId(e.target.value)}
+                  className={INPUT}
+                  required
+                >
+                  <option value="">— select user without a player —</option>
+                  {usersWithoutPlayer.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name ?? u.email} ({u.email})
+                    </option>
+                  ))}
+                </select>
+                {usersWithoutPlayer.length === 0 && (
+                  <p className="text-xs text-slate-500 mt-1">
+                    No users without a player profile. The real user must register first.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowReassign(false)} className={BTN_GHOST}>
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={reassignLoading || !reassignPlayerId || !reassignTargetUserId}
+                  className={`flex-1 ${BTN_PRIMARY}`}
+                >
+                  {reassignLoading ? "Reassigning…" : "Reassign Player"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
