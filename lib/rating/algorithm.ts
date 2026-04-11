@@ -1,6 +1,8 @@
 // Rating algorithm based on PB Rating Schema.xlsx
 // new_rate = initial + Table_A + Table_D_factor + Table_E_factor + Table_F_factor + Table_G_factor
 
+import { pickleballAge } from "@/lib/pickleballAge";
+
 export const CATEGORY_INITIAL_RATING: Record<string, number> = {
   NOVICE:       2.0,
   INTERMEDIATE: 3.5,
@@ -158,8 +160,8 @@ export async function processGame(gameId: string): Promise<void> {
 
   const team1Rates   = team1.map(p => p.currentRating);
   const team2Rates   = team2.map(p => p.currentRating);
-  const team1Ages    = team1.map(p => p.age);
-  const team2Ages    = team2.map(p => p.age);
+  const team1Ages    = team1.map(p => pickleballAge(p.dateOfBirth));
+  const team2Ages    = team2.map(p => pickleballAge(p.dateOfBirth));
   const team1Genders = team1.map(p => p.gender);
   const team2Genders = team2.map(p => p.gender);
 
@@ -170,10 +172,10 @@ export async function processGame(gameId: string): Promise<void> {
     const partner = team1[i === 0 ? 1 : 0] ?? null;
     const result  = calcNewRating({
       playerRate:    player.currentRating,
-      playerAge:     player.age,
+      playerAge:     pickleballAge(player.dateOfBirth),
       playerGender:  player.gender,
       partnerRate:   partner?.currentRating ?? null,
-      partnerAge:    partner?.age ?? null,
+      partnerAge:    partner ? pickleballAge(partner.dateOfBirth) : null,
       partnerGender: partner?.gender ?? null,
       oppRates:      team2Rates,
       oppAges:       team2Ages,
@@ -190,10 +192,10 @@ export async function processGame(gameId: string): Promise<void> {
     const partner = team2[i === 0 ? 1 : 0] ?? null;
     const result  = calcNewRating({
       playerRate:    player.currentRating,
-      playerAge:     player.age,
+      playerAge:     pickleballAge(player.dateOfBirth),
       playerGender:  player.gender,
       partnerRate:   partner?.currentRating ?? null,
-      partnerAge:    partner?.age ?? null,
+      partnerAge:    partner ? pickleballAge(partner.dateOfBirth) : null,
       partnerGender: partner?.gender ?? null,
       oppRates:      team1Rates,
       oppAges:       team1Ages,

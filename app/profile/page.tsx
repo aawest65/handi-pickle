@@ -4,11 +4,12 @@ import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { pickleballAge } from "@/lib/pickleballAge";
 
 interface PlayerProfile {
   name: string;
   gender: string;
-  age: number;
+  dateOfBirth: string;
   city: string | null;
   state: string | null;
   selfRatedCategory: string;
@@ -91,7 +92,7 @@ export default function ProfilePage() {
         <Detail label="Preferred Format" value={player.preferredFormat ?? "—"} />
         <Detail label="Dominant Hand" value={player.dominantHand ?? "—"} />
         <Detail label="Years Playing" value={player.yearsPlaying != null ? `${player.yearsPlaying} yr${player.yearsPlaying !== 1 ? "s" : ""}` : "—"} />
-        <Detail label="Age" value={String(player.age)} />
+        <Detail label="Age (pickleball)" value={String(pickleballAge(player.dateOfBirth))} />
         <Detail label="Gender" value={player.gender} />
       </div>
 

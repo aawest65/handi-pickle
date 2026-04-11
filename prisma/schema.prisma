@@ -68,7 +68,7 @@ model Player {
   userId             String   @unique
   name               String
   gender             String   // MALE | FEMALE
-  age                Int
+  dateOfBirth        DateTime @db.Date
   city               String?
   state              String?
   selfRatedCategory  String   @default("NOVICE")

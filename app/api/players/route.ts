@@ -26,9 +26,9 @@ export async function POST(request: NextRequest) {
     type SkillCategory = typeof VALID_CATEGORIES[number];
 
     const body = await request.json();
-    const { name, age, gender, city, state, selfRatedCategory } = body as {
+    const { name, dateOfBirth, gender, city, state, selfRatedCategory } = body as {
       name: string;
-      age: number;
+      dateOfBirth: string;
       gender: string;
       city?: string;
       state?: string;
@@ -41,8 +41,9 @@ export async function POST(request: NextRequest) {
     if (!["MALE", "FEMALE"].includes(gender)) {
       return NextResponse.json({ error: "Gender must be MALE or FEMALE" }, { status: 400 });
     }
-    if (typeof age !== "number" || isNaN(age) || age < 5 || age > 100) {
-      return NextResponse.json({ error: "Age must be between 5 and 100" }, { status: 400 });
+    const dob = new Date(dateOfBirth);
+    if (!dateOfBirth || isNaN(dob.getTime()) || dob >= new Date()) {
+      return NextResponse.json({ error: "A valid date of birth is required" }, { status: 400 });
     }
     if (!selfRatedCategory || !VALID_CATEGORIES.includes(selfRatedCategory as SkillCategory)) {
       return NextResponse.json({ error: "A valid skill level is required" }, { status: 400 });
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest) {
       data: {
         userId:           user.id,
         name,
-        age,
+        dateOfBirth:      dob,
         gender,
         city:             city?.trim() || null,
         state:            state?.trim() || null,

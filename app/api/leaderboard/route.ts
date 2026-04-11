@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { pickleballAge } from "@/lib/pickleballAge";
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
       playerId:     p.id,
       playerName:   p.name,
       playerGender: p.gender,
-      playerAge:    p.age,
+      playerAge:    pickleballAge(p.dateOfBirth),
       playerCity:   p.city,
       playerState:  p.state,
       rating:       p.currentRating,

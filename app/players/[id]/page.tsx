@@ -1,5 +1,8 @@
+export const dynamic = 'force-dynamic';
+
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { pickleballAge } from "@/lib/pickleballAge";
 
 const GAME_TYPE_LABELS: Record<string, string> = {
   REC:          "Recreational",
@@ -72,7 +75,7 @@ export default async function PlayerProfilePage({
                 {player.gender === "MALE" ? "Male" : "Female"}
               </span>
               <span className="px-3 py-1 rounded-full text-sm font-medium bg-slate-700 text-slate-300">
-                Age {player.age}
+                Age {pickleballAge(player.dateOfBirth)}
               </span>
               {(player.city || player.state) && (
                 <span className="px-3 py-1 rounded-full text-sm font-medium bg-slate-700 text-slate-300">
