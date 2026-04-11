@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
@@ -15,9 +15,28 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  themeColor: "#2dd4bf",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 export const metadata: Metadata = {
   title: "HandiPick",
   description: "Your pickleball handicap system",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "HandiPick",
+    startupImage: "/icons/apple-touch-icon.png",
+  },
+  icons: {
+    apple: "/icons/apple-touch-icon.png",
+  },
+  formatDetection: { telephone: false },
 };
 
 const navLinks = [
