@@ -1,4 +1,4 @@
-const CACHE = "handipick-v1";
+const CACHE = "handipick-v2";
 const PRECACHE = ["/", "/leaderboard", "/players", "/login", "/register", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
