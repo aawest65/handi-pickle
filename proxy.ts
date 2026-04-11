@@ -1,5 +1,6 @@
-import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { decode } from "next-auth/jwt";
 
 // Routes that require a fully onboarded player
 const PROTECTED_ROUTES = ["/matches", "/profile"];
@@ -10,19 +11,28 @@ const AUTH_ONLY_ROUTES = ["/login", "/register"];
 // Routes that require ADMIN or SUPER_ADMIN role
 const ADMIN_ROUTES = ["/admin"];
 
-// Cookie name used by AuthJS v5 in production (HTTPS) vs development (HTTP)
 const COOKIE_NAME =
   process.env.NODE_ENV === "production"
     ? "__Secure-authjs.session-token"
     : "authjs.session-token";
 
-export async function middleware(req: NextRequest) {
-  const token = await getToken({
-    req,
-    secret: process.env.AUTH_SECRET,
-    cookieName: COOKIE_NAME,
-    salt: COOKIE_NAME,
-  });
+export default async function proxy(req: NextRequest) {
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get(COOKIE_NAME)?.value;
+
+  let token: Record<string, unknown> | null = null;
+  if (sessionCookie) {
+    const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
+    try {
+      token = await decode({
+        token: sessionCookie,
+        secret: secret!,
+        salt: COOKIE_NAME,
+      });
+    } catch {
+      token = null;
+    }
+  }
 
   const isLoggedIn = !!token;
   const onboardingComplete = (token?.onboardingComplete as boolean) ?? false;
