@@ -1,5 +1,5 @@
-import { getToken } from "next-auth/jwt";
-import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { NextResponse } from "next/server";
 
 // Routes that require a fully onboarded player
 const PROTECTED_ROUTES = ["/matches", "/profile"];
@@ -10,11 +10,11 @@ const AUTH_ONLY_ROUTES = ["/login", "/register"];
 // Routes that require ADMIN or SUPER_ADMIN role
 const ADMIN_ROUTES = ["/admin"];
 
-export async function middleware(req: NextRequest) {
-  const token = await getToken({ req, secret: process.env.AUTH_SECRET });
-  const isLoggedIn = !!token;
-  const onboardingComplete = (token?.onboardingComplete as boolean) ?? false;
-  const role = (token?.role as string) ?? "USER";
+export default auth((req) => {
+  const session = req.auth;
+  const isLoggedIn = !!session?.user;
+  const onboardingComplete = session?.user?.onboardingComplete ?? false;
+  const role = session?.user?.role ?? "USER";
   const path = req.nextUrl.pathname;
 
   // Logged-in users visiting auth pages → redirect based on onboarding status
@@ -46,7 +46,7 @@ export async function middleware(req: NextRequest) {
   }
 
   return NextResponse.next();
-}
+});
 
 export const config = {
   matcher: ["/((?!api|_next/static|_next/image|favicon.ico|icons).*)"],

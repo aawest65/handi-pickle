@@ -9,6 +9,8 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    // Use direct connection for migrations (bypasses PgBouncer prepared-statement limitation)
+    // DIRECT_URL = postgresql://postgres:PASSWORD@db.PROJECT.supabase.co:5432/postgres
+    url: process.env["DIRECT_URL"] ?? process.env["DATABASE_URL"],
   },
 });
