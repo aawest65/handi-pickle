@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { jwtDecrypt } from "jose";
 
 // Routes that require a fully onboarded player
 const PROTECTED_ROUTES = ["/matches", "/profile"];
@@ -15,18 +16,22 @@ const COOKIE_NAME =
     : "authjs.session-token";
 
 /**
- * Decrypt an Auth.js v5 JWE session token using only Web Crypto API.
- * Auth.js uses: HKDF-SHA256 key derivation → A256CBC-HS512 JWE encryption.
+ * Decode an Auth.js v5 session JWT using only Web Crypto + jose webapi.
+ *
+ * Auth.js encodes with: HKDF-SHA256(secret, salt) → 64-byte CEK → dir+A256CBC-HS512 JWE
+ * jose's main export always resolves to the webapi (Web Crypto) build.
+ * HKDF derivation is done with crypto.subtle directly to avoid @panva/hkdf's
+ * node:crypto import which fails silently in Edge Runtime.
  */
-async function decodeAuthJwt(
-  jweString: string,
+async function decodeSession(
+  jweToken: string,
   secret: string,
   salt: string
 ): Promise<Record<string, unknown> | null> {
   try {
     const enc = new TextEncoder();
 
-    // 1. Derive the 64-byte encryption key using HKDF (Web Crypto)
+    // Derive 64-byte CEK using HKDF with pure Web Crypto (no node:crypto)
     const keyMaterial = await crypto.subtle.importKey(
       "raw",
       enc.encode(secret),
@@ -34,63 +39,24 @@ async function decodeAuthJwt(
       false,
       ["deriveBits"]
     );
-    const info = enc.encode(`Auth.js Generated Encryption Key (${salt})`);
-    const saltBytes = enc.encode(salt);
     const derivedBits = await crypto.subtle.deriveBits(
-      { name: "HKDF", hash: "SHA-256", salt: saltBytes, info },
+      {
+        name: "HKDF",
+        hash: "SHA-256",
+        salt: enc.encode(salt),
+        info: enc.encode(`Auth.js Generated Encryption Key (${salt})`),
+      },
       keyMaterial,
       512 // 64 bytes for A256CBC-HS512
     );
-    const derivedKey = new Uint8Array(derivedBits);
 
-    // 2. Parse the compact JWE: header.encKey.iv.ciphertext.tag
-    const parts = jweString.split(".");
-    if (parts.length !== 5) return null;
-    const [, encryptedKeyB64, ivB64, ciphertextB64, tagB64] = parts;
-
-    // A256CBC-HS512: first 32 bytes = MAC key, last 32 bytes = AES key
-    const macKey = derivedKey.slice(0, 32);
-    const aesKey = derivedKey.slice(32, 64);
-
-    // 3. Decrypt the CEK (encrypted key) — for direct encryption it's empty
-    const encryptedKey = base64urlDecode(encryptedKeyB64);
-    // If encrypted key is empty, the derived key IS the CEK
-    // (Auth.js uses dir algorithm — direct key agreement)
-    // But we should verify this. If not empty, we'd need to unwrap it.
-    // Auth.js uses "dir" (direct encryption), so encryptedKey should be empty.
-    void encryptedKey; // unused for "dir"
-    void macKey; // unused for browser MAC check (we trust Auth.js)
-
-    // 4. Decrypt the payload using AES-CBC
-    const iv = base64urlDecode(ivB64).buffer as ArrayBuffer;
-    const ciphertext = base64urlDecode(ciphertextB64).buffer as ArrayBuffer;
-
-    const aesCbcKey = await crypto.subtle.importKey(
-      "raw",
-      aesKey,
-      "AES-CBC",
-      false,
-      ["decrypt"]
-    );
-    const decrypted = await crypto.subtle.decrypt(
-      { name: "AES-CBC", iv },
-      aesCbcKey,
-      ciphertext
-    );
-
-    // 5. Parse the JSON payload
-    const payload = JSON.parse(new TextDecoder().decode(decrypted));
-    return payload;
+    // jose webapi's jwtDecrypt accepts Uint8Array as the CEK directly
+    const cek = new Uint8Array(derivedBits);
+    const { payload } = await jwtDecrypt(jweToken, cek);
+    return payload as Record<string, unknown>;
   } catch {
     return null;
   }
-}
-
-function base64urlDecode(str: string): Uint8Array {
-  const base64 = str.replace(/-/g, "+").replace(/_/g, "/");
-  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
-  const binary = atob(padded);
-  return new Uint8Array([...binary].map((c) => c.charCodeAt(0)));
 }
 
 export default async function proxy(req: NextRequest) {
@@ -99,7 +65,7 @@ export default async function proxy(req: NextRequest) {
   let token: Record<string, unknown> | null = null;
   if (sessionCookie) {
     const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET ?? "";
-    token = await decodeAuthJwt(sessionCookie, secret, COOKIE_NAME);
+    token = await decodeSession(sessionCookie, secret, COOKIE_NAME);
   }
 
   const isLoggedIn = !!token;
