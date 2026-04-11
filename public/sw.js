@@ -1,4 +1,4 @@
-const CACHE = "handipick-v2";
+const CACHE = "handipick-v3";
 const PRECACHE = ["/", "/leaderboard", "/players", "/login", "/register", "/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
@@ -35,6 +35,10 @@ self.addEventListener("fetch", (event) => {
       (cached) =>
         cached ??
         fetch(event.request).then((response) => {
+          // Never cache redirects — they can become stale and trap users
+          if (response.redirected || response.type === "opaqueredirect" || response.status >= 300) {
+            return response;
+          }
           const clone = response.clone();
           caches.open(CACHE).then((cache) => cache.put(event.request, clone));
           return response;
