@@ -10,6 +10,7 @@ interface AdminUser {
   role: "USER" | "ADMIN" | "SUPER_ADMIN";
   player: {
     id: string;
+    playerNumber: number;
     currentRating: number;
     gamesPlayed: number;
     selfRatedCategory: string;
@@ -260,7 +261,10 @@ export default function AdminPage() {
               {users.map((user, idx) => (
                 <tr key={user.id} className={`border-b border-slate-800 ${idx % 2 === 0 ? "bg-slate-900/60" : "bg-slate-800/20"}`}>
                   <td className="px-4 py-3">
-                    <div className="font-medium text-slate-200 truncate max-w-[200px]">{user.name ?? "—"}</div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-medium text-slate-200 truncate max-w-[180px]">{user.name ?? "—"}</span>
+                      {user.player && <span className="text-xs text-slate-600">#{user.player.playerNumber}</span>}
+                    </div>
                     <div className="text-xs text-slate-500 truncate max-w-[200px]">{user.email}</div>
                     {user.email?.endsWith("@example.com") && (
                       <span className="text-xs text-amber-400">Placeholder account</span>

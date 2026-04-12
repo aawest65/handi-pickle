@@ -7,6 +7,11 @@ import { pickleballAge } from "@/lib/pickleballAge";
 async function getPlayers() {
   return prisma.player.findMany({
     orderBy: { currentRating: "desc" },
+    select: {
+      id: true, playerNumber: true, name: true, gender: true, dateOfBirth: true,
+      city: true, state: true, selfRatedCategory: true, currentRating: true,
+      gamesPlayed: true, showAge: true,
+    },
   });
 }
 
@@ -61,9 +66,11 @@ export default async function PlayersPage() {
                     <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-slate-700 text-slate-300">
                       {player.gender === "MALE" ? "Male" : "Female"}
                     </span>
-                    <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-slate-700 text-slate-300">
-                      Age {pickleballAge(player.dateOfBirth)}
-                    </span>
+                    {player.showAge && (
+                      <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-slate-700 text-slate-300">
+                        Age {pickleballAge(player.dateOfBirth)}
+                      </span>
+                    )}
                     <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold border ${CATEGORY_COLOR[player.selfRatedCategory] ?? CATEGORY_COLOR.NOVICE}`}>
                       {player.selfRatedCategory.charAt(0) + player.selfRatedCategory.slice(1).toLowerCase()}
                     </span>

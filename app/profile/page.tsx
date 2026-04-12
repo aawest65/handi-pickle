@@ -7,6 +7,7 @@ import Link from "next/link";
 import { pickleballAge } from "@/lib/pickleballAge";
 
 interface PlayerProfile {
+  playerNumber: number;
   name: string;
   gender: string;
   dateOfBirth: string;
@@ -18,6 +19,7 @@ interface PlayerProfile {
   dominantHand: string | null;
   yearsPlaying: number | null;
   preferredFormat: string | null;
+  showAge: boolean;
 }
 
 export default function ProfilePage() {
@@ -25,6 +27,8 @@ export default function ProfilePage() {
   const router = useRouter();
   const [player, setPlayer] = useState<PlayerProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showAge, setShowAge] = useState(true);
+  const [savingAge, setSavingAge] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
@@ -34,7 +38,11 @@ export default function ProfilePage() {
     if (status !== "authenticated") return;
     fetch("/api/onboarding")
       .then((r) => r.json())
-      .then((d) => { setPlayer(d.player ?? null); setLoading(false); })
+      .then((d) => {
+        setPlayer(d.player ?? null);
+        if (d.player) setShowAge(d.player.showAge ?? true);
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
   }, [status]);
 
@@ -71,6 +79,7 @@ export default function ProfilePage() {
           <p className="text-sm text-slate-400">
             {player.city && player.state ? `${player.city}, ${player.state}` : player.city ?? player.state ?? "Location not set"}
           </p>
+          <p className="text-xs text-slate-600 mt-1">Player #{player.playerNumber}</p>
         </div>
       </div>
 
@@ -94,6 +103,33 @@ export default function ProfilePage() {
         <Detail label="Years Playing" value={player.yearsPlaying != null ? `${player.yearsPlaying} yr${player.yearsPlaying !== 1 ? "s" : ""}` : "—"} />
         <Detail label="Age (pickleball)" value={String(pickleballAge(player.dateOfBirth))} />
         <Detail label="Gender" value={player.gender} />
+      </div>
+
+      {/* Privacy settings */}
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 mb-4">
+        <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Privacy</h2>
+        <label className="flex items-center justify-between gap-3 cursor-pointer group">
+          <span className="text-sm text-slate-300">Show my age on public profile</span>
+          <button
+            role="switch"
+            aria-checked={showAge}
+            disabled={savingAge}
+            onClick={async () => {
+              const next = !showAge;
+              setSavingAge(true);
+              setShowAge(next);
+              await fetch("/api/profile/settings", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ showAge: next }),
+              });
+              setSavingAge(false);
+            }}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none disabled:opacity-50 ${showAge ? "bg-teal-600" : "bg-slate-600"}`}
+          >
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showAge ? "translate-x-6" : "translate-x-1"}`} />
+          </button>
+        </label>
       </div>
 
       <Link

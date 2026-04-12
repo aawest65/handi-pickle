@@ -20,6 +20,7 @@ export async function GET() {
       player: {
         select: {
           id: true,
+          playerNumber: true,
           currentRating: true,
           gamesPlayed: true,
           selfRatedCategory: true,

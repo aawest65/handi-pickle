@@ -63,6 +63,7 @@ export default function OnboardingPage() {
   const [name, setName] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [gender, setGender] = useState<"MALE" | "FEMALE" | "">("");
+  const [showAge, setShowAge] = useState(true);
 
   // Step 2 — Game
   const [skillLevel, setSkillLevel] = useState("");
@@ -106,6 +107,7 @@ export default function OnboardingPage() {
           if (p.yearsPlaying !== null && p.yearsPlaying !== undefined) setYearsPlaying(p.yearsPlaying);
           if (p.city) setCity(p.city);
           if (p.state) setState(p.state);
+          if (typeof p.showAge === "boolean") setShowAge(p.showAge);
 
           // Resume at correct step
           if (!p.selfRatedCategory) setStep(p.name ? 2 : 1);
@@ -162,7 +164,7 @@ export default function OnboardingPage() {
     const dob = new Date(dateOfBirth);
     if (isNaN(dob.getTime()) || dob >= new Date()) { setError("Please enter a valid date of birth."); return; }
     if (!gender) { setError("Please select your gender."); return; }
-    const result = await saveStep(1, { name: name.trim(), dateOfBirth, gender });
+    const result = await saveStep(1, { name: name.trim(), dateOfBirth, gender, showAge });
     if (result) setStep(2);
   }
 
@@ -295,6 +297,19 @@ export default function OnboardingPage() {
                 ))}
               </div>
             </div>
+
+            {/* Age privacy */}
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={!showAge}
+                onChange={(e) => setShowAge(!e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-slate-600 bg-slate-800 text-teal-500 focus:ring-teal-500 focus:ring-offset-slate-900 shrink-0"
+              />
+              <span className="text-sm text-slate-400 group-hover:text-slate-300 transition-colors">
+                Don&apos;t display my age on my public profile
+              </span>
+            </label>
           </div>
 
           {error && <p className="mt-4 text-sm text-red-400">{error}</p>}

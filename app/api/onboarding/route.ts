@@ -43,7 +43,7 @@ export async function PUT(req: NextRequest) {
   const { step } = body;
 
   if (step === 1) {
-    const { name, dateOfBirth, gender } = body as { name: string; dateOfBirth: string; gender: string };
+    const { name, dateOfBirth, gender, showAge } = body as { name: string; dateOfBirth: string; gender: string; showAge?: boolean };
 
     if (!name?.trim()) return NextResponse.json({ error: "Name is required" }, { status: 400 });
     if (!["MALE", "FEMALE"].includes(gender)) return NextResponse.json({ error: "Invalid gender" }, { status: 400 });
@@ -59,7 +59,7 @@ export async function PUT(req: NextRequest) {
     const player = user.player
       ? await prisma.player.update({
           where: { userId: user.id },
-          data: { name: name.trim(), dateOfBirth: dob, gender },
+          data: { name: name.trim(), dateOfBirth: dob, gender, ...(showAge !== undefined && { showAge }) },
         })
       : await prisma.player.create({
           data: {
@@ -67,6 +67,7 @@ export async function PUT(req: NextRequest) {
             name: name.trim(),
             dateOfBirth: dob,
             gender,
+            showAge: showAge !== false,
             onboardingComplete: false,
           },
         });

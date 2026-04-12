@@ -76,6 +76,7 @@ model PasswordResetToken {
 
 model Player {
   id                 String   @id @default(cuid())
+  playerNumber       Int      @unique @default(autoincrement())
   userId             String   @unique
   name               String
   gender             String   // MALE | FEMALE
@@ -92,6 +93,7 @@ model Player {
   duprRating         Float?
   avatarUrl          String?
   onboardingComplete Boolean  @default(false)
+  showAge            Boolean  @default(true)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

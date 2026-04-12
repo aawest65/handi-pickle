@@ -69,14 +69,19 @@ export default async function PlayerProfilePage({
             {player.name.charAt(0).toUpperCase()}
           </div>
           <div className="flex-1">
-            <h1 className="text-3xl font-bold text-slate-100">{player.name}</h1>
+            <div className="flex items-baseline gap-3">
+              <h1 className="text-3xl font-bold text-slate-100">{player.name}</h1>
+              <span className="text-sm text-slate-500">#{player.playerNumber}</span>
+            </div>
             <div className="flex flex-wrap items-center gap-3 mt-2">
               <span className="px-3 py-1 rounded-full text-sm font-medium bg-slate-700 text-slate-300">
                 {player.gender === "MALE" ? "Male" : "Female"}
               </span>
-              <span className="px-3 py-1 rounded-full text-sm font-medium bg-slate-700 text-slate-300">
-                Age {pickleballAge(player.dateOfBirth)}
-              </span>
+              {player.showAge && (
+                <span className="px-3 py-1 rounded-full text-sm font-medium bg-slate-700 text-slate-300">
+                  Age {pickleballAge(player.dateOfBirth)}
+                </span>
+              )}
               {(player.city || player.state) && (
                 <span className="px-3 py-1 rounded-full text-sm font-medium bg-slate-700 text-slate-300">
                   📍 {[player.city, player.state].filter(Boolean).join(", ")}
