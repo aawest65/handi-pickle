@@ -46,16 +46,6 @@ function DeltaBadge({ delta }: { delta: number }) {
   return <span className={`font-medium text-sm ${color}`}>{sign}{delta.toFixed(4)}</span>;
 }
 
-function FactorRow({ label, value }: { label: string; value: number }) {
-  const color = value > 0 ? "text-teal-300" : value < 0 ? "text-red-300" : "text-slate-500";
-  const sign  = value >= 0 ? "+" : "";
-  return (
-    <div className="flex justify-between text-xs">
-      <span className="text-slate-500">{label}</span>
-      <span className={color}>{sign}{value.toFixed(4)}</span>
-    </div>
-  );
-}
 
 export default async function PlayerProfilePage({
   params,
@@ -206,14 +196,6 @@ export default async function PlayerProfilePage({
                   </div>
                 </div>
 
-                {/* Rating factors */}
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-1 bg-slate-900/50 rounded-lg p-3">
-                  <FactorRow label="Win/Loss"  value={h.winLossFactor} />
-                  <FactorRow label="Type"      value={h.typeFactor} />
-                  <FactorRow label="Gender"    value={h.genderFactor} />
-                  <FactorRow label="Age"       value={h.ageFactor} />
-                  <FactorRow label="Rate×Type" value={h.rateTypeFactor} />
-                </div>
               </div>
             );
           })}
