@@ -82,12 +82,26 @@ export async function PUT(req: NextRequest) {
       yearsPlaying?: number;
     };
 
+    if (!user.player) {
+      return NextResponse.json({ error: "Complete step 1 first" }, { status: 400 });
+    }
+
+    // If onboarding is already complete, skill level and rating are locked —
+    // only admins may change those. Only update game preferences.
+    if (user.player.onboardingComplete) {
+      const player = await prisma.player.update({
+        where: { userId: user.id },
+        data: {
+          preferredFormat: preferredFormat ?? null,
+          yearsPlaying: yearsPlaying ?? null,
+        },
+      });
+      return NextResponse.json({ player });
+    }
+
     const validCategories = ["NOVICE", "INTERMEDIATE", "ADVANCED", "PRO"];
     if (!validCategories.includes(selfRatedCategory)) {
       return NextResponse.json({ error: "Invalid skill category" }, { status: 400 });
-    }
-    if (!user.player) {
-      return NextResponse.json({ error: "Complete step 1 first" }, { status: 400 });
     }
 
     const initialRating = CATEGORY_INITIAL_RATING[selfRatedCategory];

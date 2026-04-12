@@ -339,28 +339,40 @@ function OnboardingInner() {
           </div>
 
           <div className="space-y-6 flex-1">
-            {/* Skill level */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Skill Level</label>
-              <div className="grid grid-cols-2 gap-3">
-                {SKILL_LEVELS.map((cat) => (
-                  <button
-                    key={cat.value}
-                    type="button"
-                    onClick={() => setSkillLevel(cat.value)}
-                    className={`text-left p-4 rounded-xl border transition-all ${
-                      skillLevel === cat.value
-                        ? "border-teal-500 bg-teal-900/30 text-slate-100"
-                        : "border-slate-600 bg-slate-800 text-slate-400 hover:border-slate-500"
-                    }`}
-                  >
-                    <div className="font-semibold text-sm">{cat.label}</div>
-                    <div className="text-xs mt-0.5 opacity-70">{cat.desc}</div>
-                    <div className="text-xs mt-1.5 text-teal-400 font-medium">Starts at {cat.rating}</div>
-                  </button>
-                ))}
+            {/* Skill level — locked after initial setup */}
+            {isEditMode ? (
+              <div className="rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-300">Skill Level</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Can only be changed by an admin</p>
+                </div>
+                <span className="text-sm font-semibold text-teal-400">
+                  {SKILL_LEVELS.find((s) => s.value === skillLevel)?.label ?? skillLevel}
+                </span>
               </div>
-            </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Skill Level</label>
+                <div className="grid grid-cols-2 gap-3">
+                  {SKILL_LEVELS.map((cat) => (
+                    <button
+                      key={cat.value}
+                      type="button"
+                      onClick={() => setSkillLevel(cat.value)}
+                      className={`text-left p-4 rounded-xl border transition-all ${
+                        skillLevel === cat.value
+                          ? "border-teal-500 bg-teal-900/30 text-slate-100"
+                          : "border-slate-600 bg-slate-800 text-slate-400 hover:border-slate-500"
+                      }`}
+                    >
+                      <div className="font-semibold text-sm">{cat.label}</div>
+                      <div className="text-xs mt-0.5 opacity-70">{cat.desc}</div>
+                      <div className="text-xs mt-1.5 text-teal-400 font-medium">Starts at {cat.rating}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Preferred format */}
             <div>
