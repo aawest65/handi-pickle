@@ -23,6 +23,7 @@ async function getPlayer(id: string) {
   return prisma.player.findUnique({
     where: { id },
     include: {
+      club: { select: { id: true, name: true } },
       ratingHistory: {
         include: {
           game: {
@@ -85,6 +86,11 @@ export default async function PlayerProfilePage({
               {(player.city || player.state) && (
                 <span className="px-3 py-1 rounded-full text-sm font-medium bg-slate-700 text-slate-300">
                   📍 {[player.city, player.state].filter(Boolean).join(", ")}
+                </span>
+              )}
+              {player.club && (
+                <span className="px-3 py-1 rounded-full text-sm font-medium bg-teal-900/40 text-teal-300 border border-teal-700/40">
+                  {player.club.name}
                 </span>
               )}
               {skillCategory && (

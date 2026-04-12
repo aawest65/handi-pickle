@@ -74,6 +74,17 @@ model PasswordResetToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model Club {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  city        String?
+  state       String?
+  description String?
+  createdAt   DateTime @default(now())
+
+  players Player[]
+}
+
 model Player {
   id                 String   @id @default(cuid())
   playerNumber       String   @unique
@@ -83,6 +94,7 @@ model Player {
   dateOfBirth        DateTime @db.Date
   city               String?
   state              String?
+  clubId             String?
   selfRatedCategory  String   @default("NOVICE")
   currentRating      Float    @default(3.0)
   gamesPlayed        Int      @default(0)
@@ -104,6 +116,7 @@ model Player {
   showAge            Boolean  @default(true)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  club Club? @relation(fields: [clubId], references: [id], onDelete: SetNull)
 
   team1Player1Games Game[]         @relation("T1P1")
   team1Player2Games Game[]         @relation("T1P2")

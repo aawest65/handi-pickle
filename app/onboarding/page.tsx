@@ -84,9 +84,11 @@ function OnboardingInner() {
   const [preferredFormat, setPreferredFormat] = useState("");
   const [yearsPlaying, setYearsPlaying]       = useState<number | null>(null);
 
-  // Step 5 — Location
-  const [city, setCity]   = useState("");
-  const [state, setState] = useState("");
+  // Step 5 — Location + Club
+  const [city, setCity]     = useState("");
+  const [state, setState]   = useState("");
+  const [clubId, setClubId] = useState("");
+  const [clubs, setClubs]   = useState<{ id: string; name: string }[]>([]);
 
   // Duplicate account warning
   const [duplicateWarning, setDuplicateWarning] = useState<DuplicatePlayer[] | null>(null);
@@ -120,8 +122,9 @@ function OnboardingInner() {
           if (p.selfRatedCategory)  setSkillLevel(p.selfRatedCategory);
           if (p.preferredFormat)    setPreferredFormat(p.preferredFormat);
           if (p.yearsPlaying !== null && p.yearsPlaying !== undefined) setYearsPlaying(p.yearsPlaying);
-          if (p.city)  setCity(p.city);
-          if (p.state) setState(p.state);
+          if (p.city)   setCity(p.city);
+          if (p.state)  setState(p.state);
+          if (p.clubId) setClubId(p.clubId);
           if (typeof p.showAge === "boolean") setShowAge(p.showAge);
 
           // Resume at correct step
@@ -132,6 +135,10 @@ function OnboardingInner() {
       })
       .finally(() => setLoading(false));
   }, [status, session, router, isEditMode]);
+
+  useEffect(() => {
+    fetch("/api/clubs").then((r) => r.json()).then(setClubs).catch(() => {});
+  }, []);
 
   useEffect(() => {
     setError("");
@@ -220,9 +227,13 @@ function OnboardingInner() {
     if (result) setStep(5);
   }
 
-  // Step 5 → welcome: save location to API step 3
+  // Step 5 → welcome: save location + club to API step 3
   async function handleStep5(skip = false) {
-    const result = await saveStep(3, { city: skip ? "" : city, state: skip ? "" : state });
+    const result = await saveStep(3, {
+      city:   skip ? "" : city,
+      state:  skip ? "" : state,
+      clubId: skip ? null : (clubId || null),
+    });
     if (result) {
       await update();
       if (isEditMode) {
@@ -583,6 +594,21 @@ function OnboardingInner() {
                 ))}
               </select>
             </div>
+            {clubs.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1.5">Club affiliation <span className="text-slate-500 font-normal">(optional)</span></label>
+                <select
+                  value={clubId}
+                  onChange={(e) => setClubId(e.target.value)}
+                  className={INPUT}
+                >
+                  <option value="">— No club —</option>
+                  {clubs.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           {error && <p className="mt-4 text-sm text-red-400">{error}</p>}

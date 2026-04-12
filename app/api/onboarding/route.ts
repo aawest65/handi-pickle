@@ -121,7 +121,7 @@ export async function PUT(req: NextRequest) {
   }
 
   if (step === 3) {
-    const { city, state } = body as { city?: string; state?: string };
+    const { city, state, clubId } = body as { city?: string; state?: string; clubId?: string | null };
 
     if (!user.player) {
       return NextResponse.json({ error: "Complete step 1 first" }, { status: 400 });
@@ -132,6 +132,7 @@ export async function PUT(req: NextRequest) {
       data: {
         city: city?.trim() || null,
         state: state?.trim() || null,
+        clubId: clubId ?? null,
         onboardingComplete: true,
       },
     });

@@ -10,9 +10,15 @@ interface LeaderboardEntry {
   playerAge:    number;
   playerCity:   string | null;
   playerState:  string | null;
+  playerClub:   string | null;
   rating:       number;
   gamesPlayed:  number;
   category:     string;
+}
+
+interface Club {
+  id:   string;
+  name: string;
 }
 
 const CATEGORY_COLOR: Record<string, string> = {
@@ -50,9 +56,15 @@ const FORMAT_TABS: { value: Format; label: string }[] = [
 export default function LeaderboardPage() {
   const [gender, setGender]   = useState<"" | "MALE" | "FEMALE">("");
   const [format, setFormat]   = useState<Format>("");
+  const [clubId, setClubId]   = useState("");
+  const [clubs, setClubs]     = useState<Club[]>([]);
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/clubs").then((r) => r.json()).then(setClubs).catch(() => {});
+  }, []);
 
   const fetchLeaderboard = useCallback(async () => {
     setLoading(true);
@@ -61,6 +73,7 @@ export default function LeaderboardPage() {
       const params = new URLSearchParams();
       if (gender) params.set("gender", gender);
       if (format) params.set("format", format);
+      if (clubId) params.set("clubId", clubId);
       const res = await fetch(`/api/leaderboard${params.size ? `?${params}` : ""}`);
       if (!res.ok) throw new Error("Failed to fetch leaderboard");
       setEntries(await res.json());
@@ -69,7 +82,7 @@ export default function LeaderboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [gender, format]);
+  }, [gender, format, clubId]);
 
   useEffect(() => { fetchLeaderboard(); }, [fetchLeaderboard]);
 
@@ -96,6 +109,28 @@ export default function LeaderboardPage() {
           </button>
         ))}
       </div>
+
+      {/* Club filter */}
+      {clubs.length > 0 && (
+        <div className="flex items-center gap-3 mb-5">
+          <span className="text-xs font-medium text-slate-400 uppercase tracking-wide shrink-0">Club</span>
+          <select
+            value={clubId}
+            onChange={(e) => setClubId(e.target.value)}
+            className="bg-slate-800 border border-slate-700 text-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+          >
+            <option value="">All Clubs</option>
+            {clubs.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+          {clubId && (
+            <button onClick={() => setClubId("")} className="text-xs text-slate-500 hover:text-slate-300 transition-colors">
+              Clear
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Gender filter */}
       <div className="flex items-center gap-3 mb-6">
@@ -171,7 +206,7 @@ export default function LeaderboardPage() {
                   </td>
                   <td className="px-4 py-3.5">
                     <div className="font-medium text-slate-200">{entry.playerName}</div>
-                    <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
+                    <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
                       <span>{entry.playerGender === "MALE" ? "Male" : "Female"}</span>
                       <span>·</span>
                       <span>Age {entry.playerAge}</span>
@@ -179,9 +214,10 @@ export default function LeaderboardPage() {
                         · {entry.category.charAt(0) + entry.category.slice(1).toLowerCase()}
                       </span>
                       {(entry.playerCity || entry.playerState) && (
-                        <span className="ml-1">
-                          · {[entry.playerCity, entry.playerState].filter(Boolean).join(", ")}
-                        </span>
+                        <span>· {[entry.playerCity, entry.playerState].filter(Boolean).join(", ")}</span>
+                      )}
+                      {entry.playerClub && (
+                        <span className="text-teal-600">· {entry.playerClub}</span>
                       )}
                     </div>
                   </td>
