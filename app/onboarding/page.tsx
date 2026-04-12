@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 
@@ -50,7 +50,7 @@ function ProgressBar({ step }: { step: Step }) {
   );
 }
 
-export default function OnboardingPage() {
+function OnboardingInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const isEditMode = searchParams.get("edit") === "1";
@@ -496,5 +496,13 @@ export default function OnboardingPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense>
+      <OnboardingInner />
+    </Suspense>
   );
 }
