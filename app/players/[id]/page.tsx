@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { pickleballAge } from "@/lib/pickleballAge";
+import { ReliabilityBar } from "@/app/components/ReliabilityBar";
 
 const GAME_TYPE_LABELS: Record<string, string> = {
   REC:          "Recreational",
@@ -94,15 +95,18 @@ export default async function PlayerProfilePage({
               <span className="text-slate-400 text-sm">Member since {joinDate}</span>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4 text-center sm:text-right">
-            <div>
-              <div className="text-3xl font-bold text-teal-400">{player.currentRating.toFixed(3)}</div>
-              <div className="text-xs text-slate-400">Current Rating</div>
+          <div className="flex flex-col gap-3 text-center sm:text-right sm:min-w-[140px]">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div className="text-3xl font-bold text-teal-400">{player.currentRating.toFixed(3)}</div>
+                <div className="text-xs text-slate-400">Current Rating</div>
+              </div>
+              <div>
+                <div className="text-3xl font-bold text-slate-200">{player.gamesPlayed}</div>
+                <div className="text-xs text-slate-400">Games Played</div>
+              </div>
             </div>
-            <div>
-              <div className="text-3xl font-bold text-slate-200">{player.gamesPlayed}</div>
-              <div className="text-xs text-slate-400">Games Played</div>
-            </div>
+            <ReliabilityBar gamesPlayed={player.gamesPlayed} showLabel />
           </div>
         </div>
       </div>

@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { pickleballAge } from "@/lib/pickleballAge";
+import { ReliabilityBar } from "@/app/components/ReliabilityBar";
 
 async function getPlayers() {
   return prisma.player.findMany({
@@ -84,8 +85,12 @@ export default async function PlayersPage() {
                   <div className="text-xs text-slate-500">rating</div>
                 </div>
               </div>
-              <div className="flex items-center justify-between text-sm text-slate-400 pt-3 border-t border-slate-700">
-                <span>{player.gamesPlayed} game{player.gamesPlayed !== 1 ? "s" : ""} played</span>
+              <div className="pt-3 border-t border-slate-700 space-y-2">
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                  <span>{player.gamesPlayed} game{player.gamesPlayed !== 1 ? "s" : ""} played</span>
+                  <span className="text-slate-500">reliability</span>
+                </div>
+                <ReliabilityBar gamesPlayed={player.gamesPlayed} compact />
               </div>
             </Link>
           ))}
