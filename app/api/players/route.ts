@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { CATEGORY_INITIAL_RATING } from "@/lib/rating/algorithm";
+import { generatePlayerNumber } from "@/lib/playerNumber";
 
 export async function GET() {
   try {
@@ -73,6 +74,7 @@ export async function POST(request: NextRequest) {
         state:            state?.trim() || null,
         selfRatedCategory: category,
         currentRating:    initialRating,
+        playerNumber:     await generatePlayerNumber(name),
       },
     });
 

@@ -10,6 +10,7 @@
 import { prisma } from "../lib/prisma";
 import bcrypt from "bcryptjs";
 import { CATEGORY_INITIAL_RATING } from "../lib/rating/algorithm";
+import { generatePlayerNumber } from "../lib/playerNumber";
 
 // birthYear produces a dateOfBirth using the pickleball age rule
 function dobFromYear(birthYear: number): Date {
@@ -42,6 +43,7 @@ async function createUserAndPlayer(
       dateOfBirth:       dobFromYear(birthYear),
       selfRatedCategory: category,
       currentRating:     CATEGORY_INITIAL_RATING[category],
+      playerNumber:      await generatePlayerNumber(`${firstName} ${lastName}`),
     },
   });
 

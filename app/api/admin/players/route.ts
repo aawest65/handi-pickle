@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { CATEGORY_INITIAL_RATING } from "@/lib/rating/algorithm";
+import { generatePlayerNumber } from "@/lib/playerNumber";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 
@@ -79,7 +80,8 @@ export async function POST(req: NextRequest) {
           dateOfBirth: dob,
           selfRatedCategory: category,
           currentRating: initialRating,
-          onboardingComplete: true, // admin-created players are immediately active
+          onboardingComplete: true,
+          playerNumber: await generatePlayerNumber(name.trim()),
         },
       },
     },

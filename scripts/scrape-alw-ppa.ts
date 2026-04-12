@@ -22,6 +22,7 @@ import puppeteer from "puppeteer";
 import { writeFileSync } from "fs";
 import { prisma } from "../lib/prisma";
 import { processGame } from "../lib/rating/algorithm";
+import { generatePlayerNumber } from "../lib/playerNumber";
 
 const DEBUG   = process.argv.includes("--debug");
 const DRY_RUN = process.argv.includes("--dry-run");
@@ -302,6 +303,7 @@ async function upsertPlayer(name: string): Promise<string> {
       dateOfBirth,
       selfRatedCategory: "PRO",
       currentRating:     6.0,
+      playerNumber:      await generatePlayerNumber(name),
     },
   });
 
