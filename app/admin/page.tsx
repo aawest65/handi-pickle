@@ -76,6 +76,16 @@ export default function AdminPage() {
   const [reassignError, setReassignError] = useState("");
   const [reassignLoading, setReassignLoading] = useState(false);
 
+  // Edit user state
+  const [editUser, setEditUser] = useState<AdminUser | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", email: "", selfRatedCategory: "", currentRating: "" });
+  const [editError, setEditError] = useState("");
+  const [editLoading, setEditLoading] = useState(false);
+
+  // Delete state
+  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
   function loadUsers() {
     setLoading(true);
     fetch("/api/admin/users")
@@ -197,6 +207,62 @@ export default function AdminPage() {
     }
   }
 
+  function openEdit(user: AdminUser) {
+    setEditUser(user);
+    setEditForm({
+      name: user.name ?? "",
+      email: user.email ?? "",
+      selfRatedCategory: user.player?.selfRatedCategory ?? "",
+      currentRating: user.player?.currentRating.toFixed(2) ?? "",
+    });
+    setEditError("");
+  }
+
+  async function handleEditUser(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editUser) return;
+    setEditError("");
+    setEditLoading(true);
+    try {
+      const payload: Record<string, unknown> = {
+        name: editForm.name,
+        email: editForm.email,
+      };
+      if (editUser.player) {
+        payload.selfRatedCategory = editForm.selfRatedCategory;
+        const r = parseFloat(editForm.currentRating);
+        if (!isNaN(r)) payload.currentRating = r;
+      }
+      const res = await fetch(`/api/admin/users/${editUser.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) { setEditError(data.error ?? "Failed to update"); return; }
+      setUsers((prev) => prev.map((u) => u.id === editUser.id ? data : u));
+      setEditUser(null);
+    } catch {
+      setEditError("Network error");
+    } finally {
+      setEditLoading(false);
+    }
+  }
+
+  async function handleDeleteUser(userId: string) {
+    setDeleteLoading(true);
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, { method: "DELETE" });
+      if (!res.ok) { const d = await res.json(); alert(d.error ?? "Failed to delete"); return; }
+      setUsers((prev) => prev.filter((u) => u.id !== userId));
+      setDeleteUserId(null);
+    } catch {
+      alert("Network error");
+    } finally {
+      setDeleteLoading(false);
+    }
+  }
+
   const playersWithUsers = users.filter((u) => u.player);
   const usersWithoutPlayer = users.filter((u) => !u.player);
   const selectedPlayerUser = users.find((u) => u.player?.id === reassignPlayerId);
@@ -280,6 +346,24 @@ export default function AdminPage() {
                       >
                         {resetLinkCopied === user.id ? "✓ Link copied!" : resetLinkUserId === user.id ? "Generating…" : "Copy reset link"}
                       </button>
+                    )}
+                    {isSuperAdmin && (
+                      <div className="flex gap-2 mt-1">
+                        <button
+                          onClick={() => openEdit(user)}
+                          className="text-xs text-slate-500 hover:text-teal-400 transition-colors"
+                        >
+                          Edit
+                        </button>
+                        {user.id !== session?.user?.id && (
+                          <button
+                            onClick={() => setDeleteUserId(user.id)}
+                            className="text-xs text-slate-500 hover:text-red-400 transition-colors"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
                     )}
                   </td>
                   <td className="px-4 py-3 text-center hidden sm:table-cell">
@@ -480,6 +564,104 @@ export default function AdminPage() {
           </div>
         </div>
       )}
+
+      {/* ── Edit User Modal ── */}
+      {editUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-6">
+            <h2 className="text-lg font-bold text-teal-400 mb-4">Edit User</h2>
+
+            {editError && (
+              <div className="mb-4 px-3 py-2 rounded-lg bg-red-900/40 border border-red-700 text-red-300 text-sm">{editError}</div>
+            )}
+
+            <form onSubmit={handleEditUser} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Full Name</label>
+                <input
+                  value={editForm.name}
+                  onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                  className={INPUT}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+                  className={INPUT}
+                  required
+                />
+              </div>
+              {editUser.player && (
+                <>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-400 mb-1">Skill Category</label>
+                    <select
+                      value={editForm.selfRatedCategory}
+                      onChange={(e) => setEditForm((f) => ({ ...f, selfRatedCategory: e.target.value }))}
+                      className={INPUT}
+                    >
+                      {CATEGORIES.map((c) => (
+                        <option key={c.value} value={c.value}>{c.label}</option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-slate-600 mt-1">Changing category does not reset the rating — adjust it separately below if needed.</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-400 mb-1">Current Rating</label>
+                    <input
+                      type="number"
+                      step="0.05"
+                      min="1.0"
+                      max="8.0"
+                      value={editForm.currentRating}
+                      onChange={(e) => setEditForm((f) => ({ ...f, currentRating: e.target.value }))}
+                      className={INPUT}
+                    />
+                  </div>
+                </>
+              )}
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setEditUser(null)} className={BTN_GHOST}>Cancel</button>
+                <button type="submit" disabled={editLoading} className={`flex-1 ${BTN_PRIMARY}`}>
+                  {editLoading ? "Saving…" : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete Confirmation Modal ── */}
+      {deleteUserId && (() => {
+        const target = users.find((u) => u.id === deleteUserId);
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+            <div className="w-full max-w-sm bg-slate-900 border border-red-800 rounded-2xl shadow-2xl p-6">
+              <h2 className="text-lg font-bold text-red-400 mb-2">Delete User</h2>
+              <p className="text-sm text-slate-300 mb-1">
+                Are you sure you want to delete <span className="font-semibold text-slate-100">{target?.name ?? target?.email}</span>?
+              </p>
+              <p className="text-xs text-slate-500 mb-6">
+                This will permanently remove their account, player profile, and all match history. This cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button onClick={() => setDeleteUserId(null)} className={`flex-1 ${BTN_GHOST}`}>Cancel</button>
+                <button
+                  onClick={() => handleDeleteUser(deleteUserId)}
+                  disabled={deleteLoading}
+                  className="flex-1 px-4 py-2 bg-red-700 hover:bg-red-600 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
+                >
+                  {deleteLoading ? "Deleting…" : "Delete Permanently"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Reassign Player Modal ── */}
       {showReassign && (
