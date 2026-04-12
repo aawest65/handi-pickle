@@ -95,20 +95,35 @@ export default async function PlayerProfilePage({
               <span className="text-slate-400 text-sm">Member since {joinDate}</span>
             </div>
           </div>
-          <div className="flex flex-col gap-3 text-center sm:text-right sm:min-w-[140px]">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <div className="text-3xl font-bold text-teal-400">{player.currentRating.toFixed(3)}</div>
-                <div className="text-xs text-slate-400">Current Rating</div>
-              </div>
-              <div>
-                <div className="text-3xl font-bold text-slate-200">{player.gamesPlayed}</div>
-                <div className="text-xs text-slate-400">Games Played</div>
-              </div>
-            </div>
-            <ReliabilityBar gamesPlayed={player.gamesPlayed} showLabel />
+          <div className="text-center sm:text-right shrink-0">
+            <div className="text-3xl font-bold text-teal-400">{player.currentRating.toFixed(3)}</div>
+            <div className="text-xs text-slate-400">Overall Rating</div>
+            <div className="text-lg font-semibold text-slate-200 mt-2">{player.gamesPlayed}</div>
+            <div className="text-xs text-slate-400">Games Played</div>
           </div>
         </div>
+      </div>
+
+      {/* Per-format ratings */}
+      <div className="grid grid-cols-3 gap-4 mb-8">
+        {[
+          { label: "Singles",        rating: player.singlesRating, games: player.singlesGamesPlayed },
+          { label: "Doubles",        rating: player.doublesRating, games: player.doublesGamesPlayed },
+          { label: "Mixed Doubles",  rating: player.mixedRating,   games: player.mixedGamesPlayed   },
+        ].map(({ label, rating, games }) => (
+          <div key={label} className="bg-slate-800 border border-slate-700 rounded-xl p-4">
+            <div className="text-xs text-slate-400 mb-2">{label}</div>
+            {games === 0 ? (
+              <div className="text-2xl font-bold text-slate-600">—</div>
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-teal-400">{rating.toFixed(3)}</div>
+                <div className="text-xs text-slate-500 mb-2">{games} game{games !== 1 ? "s" : ""}</div>
+                <ReliabilityBar gamesPlayed={games} compact />
+              </>
+            )}
+          </div>
+        ))}
       </div>
 
       {/* Rating history */}
@@ -145,7 +160,7 @@ export default async function PlayerProfilePage({
                     </span>
                     <span className="text-slate-500 text-sm mx-2">·</span>
                     <span className="text-slate-400 text-sm">
-                      {g.format === "SINGLES" ? "Singles" : "Doubles"}
+                      {g.format === "SINGLES" ? "Singles" : g.isMixed ? "Mixed Doubles" : "Doubles"}
                     </span>
                     <span className="text-slate-500 text-sm mx-2">·</span>
                     <span className="text-slate-500 text-xs">

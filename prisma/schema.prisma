@@ -86,6 +86,14 @@ model Player {
   selfRatedCategory  String   @default("NOVICE")
   currentRating      Float    @default(3.0)
   gamesPlayed        Int      @default(0)
+
+  // Per-format ratings — seeded from currentRating on migration, diverge from there
+  singlesRating      Float    @default(3.0)
+  doublesRating      Float    @default(3.0)
+  mixedRating        Float    @default(3.0)
+  singlesGamesPlayed Int      @default(0)
+  doublesGamesPlayed Int      @default(0)
+  mixedGamesPlayed   Int      @default(0)
   createdAt          DateTime @default(now())
   dominantHand       String?  // RIGHT | LEFT | AMBIDEXTROUS
   yearsPlaying       Int?
@@ -106,10 +114,12 @@ model Player {
 
 // gameType: REC | CLUB | TOURNEY_REG | TOURNEY_MEDAL
 // format:   SINGLES | DOUBLES
+// isMixed:  true when format=DOUBLES and at least one team has players of different genders
 model Game {
   id             String   @id @default(cuid())
   gameType       String
   format         String
+  isMixed        Boolean  @default(false)
   date           DateTime
   maxScore       Int      @default(11)
   team1Score     Int
@@ -136,6 +146,7 @@ model RatingHistory {
   ratingBefore   Float
   ratingAfter    Float
   delta          Float
+  ratingFormat   String   // SINGLES | DOUBLES | MIXED
   winLossFactor  Float
   typeFactor     Float
   genderFactor   Float

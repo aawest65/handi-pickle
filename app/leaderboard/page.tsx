@@ -38,8 +38,18 @@ function RankBadge({ rank }: { rank: number }) {
   return <span className="text-slate-400 font-medium">{rank}</span>;
 }
 
+type Format = "" | "SINGLES" | "DOUBLES" | "MIXED";
+
+const FORMAT_TABS: { value: Format; label: string }[] = [
+  { value: "",        label: "Overall"       },
+  { value: "SINGLES", label: "Singles"       },
+  { value: "DOUBLES", label: "Doubles"       },
+  { value: "MIXED",   label: "Mixed Doubles" },
+];
+
 export default function LeaderboardPage() {
   const [gender, setGender]   = useState<"" | "MALE" | "FEMALE">("");
+  const [format, setFormat]   = useState<Format>("");
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
@@ -48,8 +58,10 @@ export default function LeaderboardPage() {
     setLoading(true);
     setError(null);
     try {
-      const url = gender ? `/api/leaderboard?gender=${gender}` : "/api/leaderboard";
-      const res = await fetch(url);
+      const params = new URLSearchParams();
+      if (gender) params.set("gender", gender);
+      if (format) params.set("format", format);
+      const res = await fetch(`/api/leaderboard${params.size ? `?${params}` : ""}`);
       if (!res.ok) throw new Error("Failed to fetch leaderboard");
       setEntries(await res.json());
     } catch (err) {
@@ -57,38 +69,56 @@ export default function LeaderboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [gender]);
+  }, [gender, format]);
 
   useEffect(() => { fetchLeaderboard(); }, [fetchLeaderboard]);
 
   return (
     <div className="max-w-4xl mx-auto py-10 px-4">
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-3xl font-bold text-slate-100">Leaderboard</h1>
-        <p className="text-slate-400 mt-1">Players ranked by current rating</p>
+        <p className="text-slate-400 mt-1">Players ranked by rating</p>
       </div>
 
-      {/* Filter */}
-      <div className="flex flex-wrap gap-4 mb-8 bg-slate-800 border border-slate-700 rounded-xl p-5">
-        <div className="flex flex-col gap-1.5 flex-1 min-w-[160px]">
-          <label className="text-xs font-medium text-slate-400 uppercase tracking-wide">
-            Gender
-          </label>
-          <select
-            value={gender}
-            onChange={(e) => setGender(e.target.value as typeof gender)}
-            className="bg-slate-900 border border-slate-600 text-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+      {/* Format tabs */}
+      <div className="flex gap-1 mb-6 bg-slate-800/60 border border-slate-700 rounded-xl p-1">
+        {FORMAT_TABS.map((tab) => (
+          <button
+            key={tab.value}
+            onClick={() => setFormat(tab.value)}
+            className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+              format === tab.value
+                ? "bg-teal-600 text-white shadow"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
           >
-            <option value="">All</option>
-            <option value="MALE">Male</option>
-            <option value="FEMALE">Female</option>
-          </select>
-        </div>
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Gender filter */}
+      <div className="flex items-center gap-3 mb-6">
+        <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">Gender</span>
+        {(["", "MALE", "FEMALE"] as const).map((g) => (
+          <button
+            key={g}
+            onClick={() => setGender(g)}
+            className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+              gender === g
+                ? "bg-slate-600 text-slate-100"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            {g === "" ? "All" : g === "MALE" ? "Male" : "Female"}
+          </button>
+        ))}
       </div>
 
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-medium text-slate-400">
-          {gender === "MALE" ? "Men" : gender === "FEMALE" ? "Women" : "All Players"}
+          {FORMAT_TABS.find(t => t.value === format)?.label ?? "Overall"}
+          {gender ? ` · ${gender === "MALE" ? "Men" : "Women"}` : ""}
         </h2>
         {!loading && (
           <span className="text-sm text-slate-500">

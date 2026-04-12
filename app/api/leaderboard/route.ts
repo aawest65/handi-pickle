@@ -6,12 +6,25 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const gender = searchParams.get("gender"); // optional: "MALE" | "FEMALE"
+    const format = searchParams.get("format"); // optional: "SINGLES" | "DOUBLES" | "MIXED"
+
+    // For format-specific leaderboards, only include players who have played that format
+    const formatFilter = format === "SINGLES"
+      ? { singlesGamesPlayed: { gt: 0 } }
+      : format === "DOUBLES"
+      ? { doublesGamesPlayed: { gt: 0 } }
+      : format === "MIXED"
+      ? { mixedGamesPlayed: { gt: 0 } }
+      : {};
+
+    const ratingField = format === "SINGLES" ? "singlesRating"
+      : format === "DOUBLES" ? "doublesRating"
+      : format === "MIXED"   ? "mixedRating"
+      : "currentRating";
 
     const players = await prisma.player.findMany({
-      where: {
-        ...(gender ? { gender } : {}),
-      },
-      orderBy: { currentRating: "desc" },
+      where: { ...(gender ? { gender } : {}), ...formatFilter },
+      orderBy: { [ratingField]: "desc" },
     });
 
     const leaderboard = players.map((p, index) => ({
@@ -22,8 +35,14 @@ export async function GET(request: NextRequest) {
       playerAge:    pickleballAge(p.dateOfBirth),
       playerCity:   p.city,
       playerState:  p.state,
-      rating:       p.currentRating,
-      gamesPlayed:  p.gamesPlayed,
+      rating:       format === "SINGLES" ? p.singlesRating
+                  : format === "DOUBLES" ? p.doublesRating
+                  : format === "MIXED"   ? p.mixedRating
+                  : p.currentRating,
+      gamesPlayed:  format === "SINGLES" ? p.singlesGamesPlayed
+                  : format === "DOUBLES" ? p.doublesGamesPlayed
+                  : format === "MIXED"   ? p.mixedGamesPlayed
+                  : p.gamesPlayed,
       category:     p.selfRatedCategory,
     }));
 

@@ -139,6 +139,37 @@ export function calcNewRating(params: {
   };
 }
 
+// Determine the rating format for a game.
+export function getRatingFormat(format: string, isMixed: boolean): "SINGLES" | "DOUBLES" | "MIXED" {
+  if (format === "SINGLES") return "SINGLES";
+  return isMixed ? "MIXED" : "DOUBLES";
+}
+
+// Determine whether a doubles game is mixed (at least one team has players of different genders).
+export function detectMixed(
+  team1Genders: string[],
+  team2Genders: string[],
+  format: string,
+): boolean {
+  if (format !== "DOUBLES") return false;
+  const team1Mixed = new Set(team1Genders).size > 1;
+  const team2Mixed = new Set(team2Genders).size > 1;
+  return team1Mixed || team2Mixed;
+}
+
+// Pick the format-specific rating for a player.
+// If the player has never played this format (0 games), seed from currentRating.
+function formatRating(player: {
+  currentRating: number;
+  singlesRating: number; singlesGamesPlayed: number;
+  doublesRating: number; doublesGamesPlayed: number;
+  mixedRating:   number; mixedGamesPlayed:   number;
+}, fmt: "SINGLES" | "DOUBLES" | "MIXED"): number {
+  if (fmt === "SINGLES") return player.singlesGamesPlayed > 0 ? player.singlesRating : player.currentRating;
+  if (fmt === "DOUBLES") return player.doublesGamesPlayed > 0 ? player.doublesRating : player.currentRating;
+  return player.mixedGamesPlayed > 0 ? player.mixedRating : player.currentRating;
+}
+
 // Process a game and update all player ratings in the database.
 export async function processGame(gameId: string): Promise<void> {
   const { prisma } = await import("@/lib/prisma");
@@ -158,23 +189,33 @@ export async function processGame(gameId: string): Promise<void> {
   const team1 = [game.team1Player1, game.team1Player2].filter(Boolean) as PlayerRecord[];
   const team2 = [game.team2Player1, game.team2Player2].filter(Boolean) as PlayerRecord[];
 
-  const team1Rates   = team1.map(p => p.currentRating);
-  const team2Rates   = team2.map(p => p.currentRating);
-  const team1Ages    = team1.map(p => pickleballAge(p.dateOfBirth));
-  const team2Ages    = team2.map(p => pickleballAge(p.dateOfBirth));
   const team1Genders = team1.map(p => p.gender);
   const team2Genders = team2.map(p => p.gender);
 
-  const updates: { player: PlayerRecord; result: RatingResult }[] = [];
+  const isMixed      = detectMixed(team1Genders, team2Genders, game.format);
+  const ratingFormat = getRatingFormat(game.format, isMixed);
+
+  // Store isMixed on the game record
+  await prisma.game.update({ where: { id: gameId }, data: { isMixed } });
+
+  const team1Ages = team1.map(p => pickleballAge(p.dateOfBirth));
+  const team2Ages = team2.map(p => pickleballAge(p.dateOfBirth));
+
+  // Use format-specific ratings for the calculation
+  const team1Rates = team1.map(p => formatRating(p, ratingFormat));
+  const team2Rates = team2.map(p => formatRating(p, ratingFormat));
+
+  const updates: { player: PlayerRecord; result: RatingResult; formatRatingBefore: number }[] = [];
 
   for (let i = 0; i < team1.length; i++) {
     const player  = team1[i];
     const partner = team1[i === 0 ? 1 : 0] ?? null;
+    const before  = formatRating(player, ratingFormat);
     const result  = calcNewRating({
-      playerRate:    player.currentRating,
+      playerRate:    before,
       playerAge:     pickleballAge(player.dateOfBirth),
       playerGender:  player.gender,
-      partnerRate:   partner?.currentRating ?? null,
+      partnerRate:   partner ? formatRating(partner, ratingFormat) : null,
       partnerAge:    partner ? pickleballAge(partner.dateOfBirth) : null,
       partnerGender: partner?.gender ?? null,
       oppRates:      team2Rates,
@@ -184,17 +225,18 @@ export async function processGame(gameId: string): Promise<void> {
       oppScore:      game.team2Score,
       gameType:      game.gameType,
     });
-    updates.push({ player, result });
+    updates.push({ player, result, formatRatingBefore: before });
   }
 
   for (let i = 0; i < team2.length; i++) {
     const player  = team2[i];
     const partner = team2[i === 0 ? 1 : 0] ?? null;
+    const before  = formatRating(player, ratingFormat);
     const result  = calcNewRating({
-      playerRate:    player.currentRating,
+      playerRate:    before,
       playerAge:     pickleballAge(player.dateOfBirth),
       playerGender:  player.gender,
-      partnerRate:   partner?.currentRating ?? null,
+      partnerRate:   partner ? formatRating(partner, ratingFormat) : null,
       partnerAge:    partner ? pickleballAge(partner.dateOfBirth) : null,
       partnerGender: partner?.gender ?? null,
       oppRates:      team1Rates,
@@ -204,15 +246,24 @@ export async function processGame(gameId: string): Promise<void> {
       oppScore:      game.team1Score,
       gameType:      game.gameType,
     });
-    updates.push({ player, result });
+    updates.push({ player, result, formatRatingBefore: before });
   }
 
-  for (const { player, result } of updates) {
+  for (const { player, result, formatRatingBefore } of updates) {
+    // Format-specific field names
+    const ratingField      = ratingFormat === "SINGLES" ? "singlesRating"
+                           : ratingFormat === "DOUBLES" ? "doublesRating"
+                           : "mixedRating";
+    const gamesPlayedField = ratingFormat === "SINGLES" ? "singlesGamesPlayed"
+                           : ratingFormat === "DOUBLES" ? "doublesGamesPlayed"
+                           : "mixedGamesPlayed";
+
     await prisma.ratingHistory.create({
       data: {
         playerId:      player.id,
         gameId,
-        ratingBefore:  player.currentRating,
+        ratingFormat,
+        ratingBefore:  formatRatingBefore,
         ratingAfter:   result.newRating,
         delta:         result.delta,
         winLossFactor: result.factors.winLoss,
@@ -222,9 +273,13 @@ export async function processGame(gameId: string): Promise<void> {
         rateTypeFactor:result.factors.rateType,
       },
     });
+
     await prisma.player.update({
       where: { id: player.id },
       data: {
+        [ratingField]:      result.newRating,
+        [gamesPlayedField]: { increment: 1 },
+        // Overall rating = weighted average across all formats
         currentRating: result.newRating,
         gamesPlayed:   { increment: 1 },
       },
