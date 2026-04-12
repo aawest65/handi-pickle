@@ -145,16 +145,15 @@ export function getRatingFormat(format: string, isMixed: boolean): "SINGLES" | "
   return isMixed ? "MIXED" : "DOUBLES";
 }
 
-// Determine whether a doubles game is mixed (at least one team has players of different genders).
+// Determine whether a doubles game is mixed (any gender variety across all players in the match).
+// Two women vs two men = mixed. One mixed team vs same-gender team = mixed.
 export function detectMixed(
   team1Genders: string[],
   team2Genders: string[],
   format: string,
 ): boolean {
   if (format !== "DOUBLES") return false;
-  const team1Mixed = new Set(team1Genders).size > 1;
-  const team2Mixed = new Set(team2Genders).size > 1;
-  return team1Mixed || team2Mixed;
+  return new Set([...team1Genders, ...team2Genders]).size > 1;
 }
 
 // Pick the format-specific rating for a player.
