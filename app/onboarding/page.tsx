@@ -36,6 +36,12 @@ const YEARS_OPTIONS = [
 type Step = 1 | 2 | 3 | 4 | 5 | "welcome";
 const TOTAL_STEPS = 5;
 
+interface DuplicatePlayer {
+  id: string;
+  name: string;
+  playerNumber: string;
+}
+
 function ProgressBar({ step }: { step: Step }) {
   const n = step === "welcome" ? TOTAL_STEPS : (step as number);
   return (
@@ -81,6 +87,10 @@ function OnboardingInner() {
   // Step 5 — Location
   const [city, setCity]   = useState("");
   const [state, setState] = useState("");
+
+  // Duplicate account warning
+  const [duplicateWarning, setDuplicateWarning] = useState<DuplicatePlayer[] | null>(null);
+  const [checkingDuplicate, setCheckingDuplicate] = useState(false);
 
   // Welcome animation
   const [rating, setRating]               = useState(0);
@@ -164,12 +174,30 @@ function OnboardingInner() {
     }
   }
 
-  // Step 1 → 2: validate name + DOB, save locally
-  function handleStep1() {
+  // Step 1 → 2: validate name + DOB, check for duplicates, then advance
+  async function handleStep1(ignoreDuplicate = false) {
     if (!name.trim())  { setError("Name is required."); return; }
     if (!dateOfBirth)  { setError("Date of birth is required."); return; }
     const dob = new Date(dateOfBirth);
     if (isNaN(dob.getTime()) || dob >= new Date()) { setError("Please enter a valid date of birth."); return; }
+
+    if (!ignoreDuplicate && !isEditMode) {
+      setCheckingDuplicate(true);
+      try {
+        const res  = await fetch(`/api/players/check?name=${encodeURIComponent(name.trim())}&dob=${dateOfBirth}`);
+        const data = await res.json();
+        if (data.duplicates?.length > 0) {
+          setDuplicateWarning(data.duplicates);
+          return;
+        }
+      } catch {
+        // Non-blocking — if the check fails, proceed normally
+      } finally {
+        setCheckingDuplicate(false);
+      }
+    }
+
+    setDuplicateWarning(null);
     setStep(2);
   }
 
@@ -297,7 +325,58 @@ function OnboardingInner() {
 
           {error && <p className="mt-4 text-sm text-red-400">{error}</p>}
 
-          <button onClick={handleStep1} className={`mt-8 ${CONTINUE}`}>Continue →</button>
+          <button
+            onClick={() => handleStep1()}
+            disabled={checkingDuplicate}
+            className={`mt-8 ${CONTINUE}`}
+          >
+            {checkingDuplicate ? "Checking…" : "Continue →"}
+          </button>
+        </div>
+      )}
+
+      {/* ── Duplicate account warning modal ── */}
+      {duplicateWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-6 bg-slate-950/80 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-slate-800 border border-yellow-600/50 rounded-2xl p-6 shadow-2xl">
+            <div className="flex items-start gap-3 mb-4">
+              <span className="text-yellow-400 text-xl shrink-0">⚠</span>
+              <div>
+                <h3 className="text-base font-bold text-slate-100">Possible duplicate account</h3>
+                <p className="text-sm text-slate-400 mt-1">
+                  A player with this name and birthday already exists:
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-slate-900/60 rounded-xl px-4 py-3 mb-5 space-y-1.5">
+              {duplicateWarning.map((p) => (
+                <div key={p.id} className="flex items-center justify-between text-sm">
+                  <span className="text-slate-200 font-medium">{p.name}</span>
+                  <span className="text-slate-500 text-xs">{p.playerNumber}</span>
+                </div>
+              ))}
+            </div>
+
+            <p className="text-xs text-slate-400 mb-5">
+              If this is you, you may already have an account. If you&apos;re a different person, you can continue.
+            </p>
+
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => handleStep1(true)}
+                className="w-full py-3.5 bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold rounded-xl text-sm transition-colors"
+              >
+                Continue anyway
+              </button>
+              <button
+                onClick={() => setDuplicateWarning(null)}
+                className="w-full py-3.5 border border-slate-600 text-slate-400 hover:text-slate-200 rounded-xl text-sm transition-colors"
+              >
+                Let me check
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
