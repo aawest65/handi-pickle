@@ -4,5 +4,5 @@
  * i.e. age = currentYear - birthYear, regardless of birth month/day.
  */
 export function pickleballAge(dateOfBirth: Date | string): number {
-  return new Date().getFullYear() - new Date(dateOfBirth).getFullYear();
+  return new Date().getUTCFullYear() - new Date(dateOfBirth).getUTCFullYear();
 }

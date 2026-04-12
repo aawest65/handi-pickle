@@ -316,8 +316,8 @@ function OnboardingInner() {
               />
               {dateOfBirth && (
                 <p className="mt-1.5 text-xs text-slate-500">
-                  Pickleball age for {new Date().getFullYear()}:{" "}
-                  <span className="text-teal-400 font-medium">{new Date().getFullYear() - new Date(dateOfBirth).getFullYear()}</span>
+                  Pickleball age for {new Date().getUTCFullYear()}:{" "}
+                  <span className="text-teal-400 font-medium">{new Date().getUTCFullYear() - new Date(dateOfBirth).getUTCFullYear()}</span>
                 </p>
               )}
             </div>
