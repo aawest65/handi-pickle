@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 
 const US_STATES = [
@@ -52,6 +52,8 @@ function ProgressBar({ step }: { step: Step }) {
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isEditMode = searchParams.get("edit") === "1";
   const { data: session, status, update } = useSession();
 
   const [step, setStep] = useState<Step>(1);
@@ -87,8 +89,8 @@ export default function OnboardingPage() {
   useEffect(() => {
     if (status !== "authenticated") return;
 
-    // Already complete → go home
-    if (session.user.onboardingComplete) {
+    // Already complete → go home (unless editing)
+    if (session.user.onboardingComplete && !isEditMode) {
       router.replace("/");
       return;
     }
@@ -177,11 +179,14 @@ export default function OnboardingPage() {
   async function handleStep3(skip = false) {
     const result = await saveStep(3, { city: skip ? "" : city, state: skip ? "" : state });
     if (result) {
-      // Tell NextAuth to refresh the JWT so onboardingComplete is updated
       await update();
-      const ratingMap: Record<string, number> = { NOVICE: 2.0, INTERMEDIATE: 3.5, ADVANCED: 4.5, PRO: 6.0 };
-      setRating(ratingMap[skillLevel] ?? 3.0);
-      setStep("welcome");
+      if (isEditMode) {
+        router.push("/profile");
+      } else {
+        const ratingMap: Record<string, number> = { NOVICE: 2.0, INTERMEDIATE: 3.5, ADVANCED: 4.5, PRO: 6.0 };
+        setRating(ratingMap[skillLevel] ?? 3.0);
+        setStep("welcome");
+      }
     }
   }
 

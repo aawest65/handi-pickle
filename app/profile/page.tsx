@@ -133,7 +133,7 @@ export default function ProfilePage() {
       </div>
 
       <Link
-        href="/onboarding"
+        href="/onboarding?edit=1"
         className="block w-full text-center py-2.5 rounded-xl border border-slate-600 text-slate-300 hover:bg-slate-800 transition-colors text-sm font-medium"
       >
         Edit Profile
