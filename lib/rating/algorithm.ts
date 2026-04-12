@@ -257,14 +257,16 @@ export async function processGame(gameId: string): Promise<void> {
                            : ratingFormat === "DOUBLES" ? "doublesGamesPlayed"
                            : "mixedGamesPlayed";
 
+    const clampedRating = Math.min(8.0, Math.max(1.0, result.newRating));
+
     await prisma.ratingHistory.create({
       data: {
         playerId:      player.id,
         gameId,
         ratingFormat,
         ratingBefore:  formatRatingBefore,
-        ratingAfter:   result.newRating,
-        delta:         result.delta,
+        ratingAfter:   clampedRating,
+        delta:         clampedRating - formatRatingBefore,
         winLossFactor: result.factors.winLoss,
         typeFactor:    result.factors.type,
         genderFactor:  result.factors.gender,
@@ -276,10 +278,9 @@ export async function processGame(gameId: string): Promise<void> {
     await prisma.player.update({
       where: { id: player.id },
       data: {
-        [ratingField]:      result.newRating,
+        [ratingField]:      clampedRating,
         [gamesPlayedField]: { increment: 1 },
-        // Overall rating = weighted average across all formats
-        currentRating: result.newRating,
+        currentRating: clampedRating,
         gamesPlayed:   { increment: 1 },
       },
     });
