@@ -7,7 +7,7 @@ import Link from "next/link";
 import { pickleballAge } from "@/lib/pickleballAge";
 
 interface PlayerProfile {
-  playerNumber: number;
+  playerNumber: string;
   name: string;
   gender: string;
   dateOfBirth: string;
@@ -79,7 +79,7 @@ export default function ProfilePage() {
           <p className="text-sm text-slate-400">
             {player.city && player.state ? `${player.city}, ${player.state}` : player.city ?? player.state ?? "Location not set"}
           </p>
-          <p className="text-xs text-slate-600 mt-1">Player #{player.playerNumber}</p>
+          <p className="text-xs text-slate-600 mt-1">ID: {player.playerNumber}</p>
         </div>
       </div>
 

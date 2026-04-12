@@ -71,7 +71,7 @@ export default async function PlayerProfilePage({
           <div className="flex-1">
             <div className="flex items-baseline gap-3">
               <h1 className="text-3xl font-bold text-slate-100">{player.name}</h1>
-              <span className="text-sm text-slate-500">#{player.playerNumber}</span>
+              <span className="text-sm text-slate-500">ID: {player.playerNumber}</span>
             </div>
             <div className="flex flex-wrap items-center gap-3 mt-2">
               <span className="px-3 py-1 rounded-full text-sm font-medium bg-slate-700 text-slate-300">

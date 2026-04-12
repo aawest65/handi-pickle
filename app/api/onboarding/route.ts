@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { CATEGORY_INITIAL_RATING } from "@/lib/rating/algorithm";
+import { generatePlayerNumber } from "@/lib/playerNumber";
 
 // GET — return current player state so wizard can resume
 export async function GET() {
@@ -69,6 +70,7 @@ export async function PUT(req: NextRequest) {
             gender,
             showAge: showAge !== false,
             onboardingComplete: false,
+            playerNumber: await generatePlayerNumber(name.trim()),
           },
         });
 

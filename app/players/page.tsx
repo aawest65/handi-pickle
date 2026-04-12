@@ -56,7 +56,7 @@ export default async function PlayersPage() {
                     <h2 className="text-lg font-semibold text-slate-100 group-hover:text-teal-300 transition-colors">
                       {player.name}
                     </h2>
-                    <span className="text-xs text-slate-600">#{player.playerNumber}</span>
+                    <span className="text-xs text-slate-500">ID: {player.playerNumber}</span>
                   </div>
                   {(player.city || player.state) && (
                     <p className="text-xs text-slate-400 mt-0.5">

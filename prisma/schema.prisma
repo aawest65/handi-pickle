@@ -76,7 +76,7 @@ model PasswordResetToken {
 
 model Player {
   id                 String   @id @default(cuid())
-  playerNumber       Int      @unique @default(autoincrement())
+  playerNumber       String   @unique
   userId             String   @unique
   name               String
   gender             String   // MALE | FEMALE
