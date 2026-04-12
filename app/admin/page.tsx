@@ -289,9 +289,14 @@ export default function AdminPage() {
         {isAdmin && (
           <div className="flex flex-wrap gap-2">
             {isSuperAdmin && (
-              <a href="/admin/rating-report" className={BTN_GHOST}>
-                Rating Report
-              </a>
+              <>
+                <a href="/admin/rating-report" className={BTN_GHOST}>
+                  Rating Report
+                </a>
+                <a href="/admin/matches" className={BTN_GHOST}>
+                  Matches
+                </a>
+              </>
             )}
             <button onClick={() => { setShowReassign(true); setReassignError(""); }} className={BTN_GHOST}>
               Reassign Player
