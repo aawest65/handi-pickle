@@ -23,9 +23,12 @@ export default function NavAuth() {
             Admin
           </Link>
         )}
-        <span className="text-sm text-slate-300 hidden sm:block truncate max-w-[140px]">
+        <Link
+          href="/profile"
+          className="text-sm text-slate-300 hover:text-teal-400 hidden sm:block truncate max-w-[140px] transition-colors"
+        >
           {displayName}
-        </span>
+        </Link>
         <button
           onClick={() => signOut({ callbackUrl: "/" })}
           className="px-3 py-1.5 rounded-md text-sm font-medium text-slate-300 hover:text-teal-400 hover:bg-slate-800 transition-colors"
