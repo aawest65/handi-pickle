@@ -23,7 +23,16 @@ async function getPlayer(id: string) {
     where: { id },
     include: {
       ratingHistory: {
-        include: { game: true },
+        include: {
+          game: {
+            include: {
+              team1Player1: { select: { id: true, name: true, playerNumber: true } },
+              team1Player2: { select: { id: true, name: true, playerNumber: true } },
+              team2Player1: { select: { id: true, name: true, playerNumber: true } },
+              team2Player2: { select: { id: true, name: true, playerNumber: true } },
+            },
+          },
+        },
         orderBy: { createdAt: "desc" },
         take: 20,
       },
@@ -116,38 +125,98 @@ export default async function PlayerProfilePage({
         </div>
       ) : (
         <div className="space-y-3">
-          {player.ratingHistory.map((h) => (
-            <div key={h.id} className="bg-slate-800 border border-slate-700 rounded-xl p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <span className="text-sm font-medium text-slate-200">
-                    {GAME_TYPE_LABELS[h.game.gameType] ?? h.game.gameType}
-                  </span>
-                  <span className="text-slate-500 text-sm ml-2">·</span>
-                  <span className="text-slate-400 text-sm ml-2">
-                    {h.game.format === "SINGLES" ? "Singles" : "Doubles"}
-                  </span>
-                  <span className="text-slate-500 text-sm ml-2">·</span>
-                  <span className="text-slate-500 text-xs ml-2">
-                    {new Date(h.game.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                  </span>
-                </div>
-                <div className="text-right">
-                  <DeltaBadge delta={h.delta} />
-                  <div className="text-xs text-slate-500 mt-0.5">
-                    {h.ratingBefore.toFixed(3)} → {h.ratingAfter.toFixed(3)}
+          {player.ratingHistory.map((h) => {
+            const g = h.game;
+            // Determine which team this player was on
+            const onTeam1 = g.team1Player1Id === player.id || g.team1Player2Id === player.id;
+            const myScore  = onTeam1 ? g.team1Score : g.team2Score;
+            const oppScore = onTeam1 ? g.team2Score : g.team1Score;
+            const won = myScore > oppScore;
+
+            // Build teammate and opponent lists
+            const myTeammates = onTeam1
+              ? [g.team1Player1, g.team1Player2].filter((p) => p && p.id !== player.id)
+              : [g.team2Player1, g.team2Player2].filter((p) => p && p.id !== player.id);
+            const opponents = onTeam1
+              ? [g.team2Player1, g.team2Player2].filter(Boolean)
+              : [g.team1Player1, g.team1Player2].filter(Boolean);
+
+            return (
+              <div key={h.id} className="bg-slate-800 border border-slate-700 rounded-xl p-4">
+                {/* Top row: meta + result badge + rating delta */}
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <span className="text-sm font-medium text-slate-200">
+                      {GAME_TYPE_LABELS[g.gameType] ?? g.gameType}
+                    </span>
+                    <span className="text-slate-500 text-sm mx-2">·</span>
+                    <span className="text-slate-400 text-sm">
+                      {g.format === "SINGLES" ? "Singles" : "Doubles"}
+                    </span>
+                    <span className="text-slate-500 text-sm mx-2">·</span>
+                    <span className="text-slate-500 text-xs">
+                      {new Date(g.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    </span>
+                  </div>
+                  <div className="text-right shrink-0 ml-4">
+                    <DeltaBadge delta={h.delta} />
+                    <div className="text-xs text-slate-500 mt-0.5">
+                      {h.ratingBefore.toFixed(3)} → {h.ratingAfter.toFixed(3)}
+                    </div>
                   </div>
                 </div>
+
+                {/* Score + players */}
+                <div className="flex items-center gap-4 mb-3">
+                  {/* Score pill */}
+                  <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold shrink-0 ${
+                    won ? "bg-teal-900/50 border border-teal-700 text-teal-300" : "bg-red-900/30 border border-red-800/60 text-red-400"
+                  }`}>
+                    <span>{myScore}</span>
+                    <span className="text-slate-500 font-normal">–</span>
+                    <span>{oppScore}</span>
+                    <span className={`text-xs ml-1 font-semibold ${won ? "text-teal-400" : "text-red-400"}`}>
+                      {won ? "W" : "L"}
+                    </span>
+                  </div>
+
+                  {/* Players */}
+                  <div className="flex flex-col gap-1 text-xs min-w-0">
+                    {myTeammates.length > 0 && (
+                      <div className="text-slate-400">
+                        <span className="text-slate-500">w/ </span>
+                        {myTeammates.map((p) => (
+                          <a key={p!.id} href={`/players/${p!.id}`} className="text-teal-400 hover:text-teal-300 hover:underline">
+                            {p!.name}
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                    <div className="text-slate-400">
+                      <span className="text-slate-500">vs </span>
+                      {opponents.map((p, i) => (
+                        <span key={p!.id}>
+                          {i > 0 && <span className="text-slate-600"> & </span>}
+                          <a href={`/players/${p!.id}`} className="text-slate-300 hover:text-slate-100 hover:underline">
+                            {p!.name}
+                          </a>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Rating factors */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-1 bg-slate-900/50 rounded-lg p-3">
+                  <FactorRow label="Win/Loss"  value={h.winLossFactor} />
+                  <FactorRow label="Type"      value={h.typeFactor} />
+                  <FactorRow label="Gender"    value={h.genderFactor} />
+                  <FactorRow label="Age"       value={h.ageFactor} />
+                  <FactorRow label="Rate×Type" value={h.rateTypeFactor} />
+                </div>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-1 bg-slate-900/50 rounded-lg p-3">
-                <FactorRow label="Win/Loss"  value={h.winLossFactor} />
-                <FactorRow label="Type"      value={h.typeFactor} />
-                <FactorRow label="Gender"    value={h.genderFactor} />
-                <FactorRow label="Age"       value={h.ageFactor} />
-                <FactorRow label="Rate×Type" value={h.rateTypeFactor} />
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
