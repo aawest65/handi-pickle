@@ -52,17 +52,17 @@ export default async function PlayersPage() {
             >
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <div className="flex items-baseline gap-2 flex-wrap">
+                  <div className="flex items-baseline gap-2">
                     <h2 className="text-lg font-semibold text-slate-100 group-hover:text-teal-300 transition-colors">
                       {player.name}
                     </h2>
                     <span className="text-xs text-slate-600">#{player.playerNumber}</span>
-                    {(player.city || player.state) && (
-                      <span className="text-xs text-slate-400">
-                        {[player.city, player.state].filter(Boolean).join(", ")}
-                      </span>
-                    )}
                   </div>
+                  {(player.city || player.state) && (
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {[player.city, player.state].filter(Boolean).join(", ")}
+                    </p>
+                  )}
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
                     <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-slate-700 text-slate-300">
                       {player.gender === "MALE" ? "Male" : "Female"}
