@@ -3,6 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useState } from "react";
 import Link from "next/link";
+import * as XLSX from "xlsx";
 
 const GAME_TYPE_LABELS: Record<string, string> = {
   REC:           "Recreational",
@@ -32,6 +33,7 @@ interface RatingHistoryEntry {
     id: string;
     gameType: string;
     format: string;
+    isMixed: boolean;
     date: string;
     team1Score: number;
     team2Score: number;
@@ -108,6 +110,51 @@ export default function RatingReportPage() {
     }
   }
 
+  function exportToExcel() {
+    if (!report) return;
+
+    const rows = report.ratingHistory.map((h) => {
+      const g       = h.game;
+      const onTeam1 = g.team1Player1Id === report.id || g.team1Player2Id === report.id;
+      const myScore  = onTeam1 ? g.team1Score : g.team2Score;
+      const oppScore = onTeam1 ? g.team2Score : g.team1Score;
+      const opponents = (onTeam1
+        ? [g.team2Player1, g.team2Player2]
+        : [g.team1Player1, g.team1Player2]
+      ).filter(Boolean).map((p) => p!.name).join(" & ");
+
+      return {
+        Date:         new Date(g.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+        "Game Type":  GAME_TYPE_LABELS[g.gameType] ?? g.gameType,
+        Format:       g.format === "SINGLES" ? "Singles" : g.isMixed ? "Mixed Doubles" : "Doubles",
+        Opponents:    opponents,
+        Score:        `${myScore}-${oppScore}`,
+        Result:       myScore > oppScore ? "W" : "L",
+        "Rating Before":  h.ratingBefore,
+        "Rating After":   h.ratingAfter,
+        Delta:            h.delta,
+        "Win/Loss Factor":    h.winLossFactor,
+        "Type Factor":        h.typeFactor,
+        "Gender Factor":      h.genderFactor,
+        "Age Factor":         h.ageFactor,
+        "Rate×Type Factor":   h.rateTypeFactor,
+      };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Rating History");
+
+    // Auto-size columns
+    const colWidths = Object.keys(rows[0] ?? {}).map((key) => ({
+      wch: Math.max(key.length, ...rows.map((r) => String(r[key as keyof typeof r]).length)) + 2,
+    }));
+    ws["!cols"] = colWidths;
+
+    const fileName = `${report.name.replace(/\s+/g, "_")}_rating_report.xlsx`;
+    XLSX.writeFile(wb, fileName);
+  }
+
   if (!isSuperAdmin) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center">
@@ -156,20 +203,33 @@ export default function RatingReportPage() {
       {report && !loading && (
         <>
           {/* Player header */}
-          <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 mb-6 flex items-center justify-between">
+          <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 mb-6 flex items-center justify-between flex-wrap gap-4">
             <div>
               <p className="text-lg font-bold text-slate-100">{report.name}</p>
               <p className="text-sm text-slate-400">{report.playerNumber}</p>
             </div>
-            <div className="flex gap-8 text-center">
-              <div>
-                <div className="text-2xl font-bold text-teal-400">{report.currentRating.toFixed(3)}</div>
-                <div className="text-xs text-slate-400">Current Rating</div>
+            <div className="flex items-center gap-6">
+              <div className="flex gap-6 text-center">
+                <div>
+                  <div className="text-2xl font-bold text-teal-400">{report.currentRating.toFixed(3)}</div>
+                  <div className="text-xs text-slate-400">Current Rating</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-slate-200">{report.gamesPlayed}</div>
+                  <div className="text-xs text-slate-400">Games Played</div>
+                </div>
               </div>
-              <div>
-                <div className="text-2xl font-bold text-slate-200">{report.gamesPlayed}</div>
-                <div className="text-xs text-slate-400">Games Played</div>
-              </div>
+              {report.ratingHistory.length > 0 && (
+                <button
+                  onClick={exportToExcel}
+                  className="flex items-center gap-2 px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white text-sm font-semibold rounded-lg transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Export Excel
+                </button>
+              )}
             </div>
           </div>
 
@@ -214,7 +274,9 @@ export default function RatingReportPage() {
                         </td>
                         <td className="px-3 py-2 text-slate-300 whitespace-nowrap">
                           {GAME_TYPE_LABELS[g.gameType] ?? g.gameType}
-                          <span className="text-slate-500 text-xs ml-1">{g.format === "SINGLES" ? "S" : "D"}</span>
+                          <span className="text-slate-500 text-xs ml-1">
+                            {g.format === "SINGLES" ? "S" : g.isMixed ? "MX" : "D"}
+                          </span>
                         </td>
                         <td className="px-3 py-2 text-slate-300 text-xs">
                           {opponents.map((p, i) => (
