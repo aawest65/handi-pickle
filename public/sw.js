@@ -1,4 +1,11 @@
 const CACHE = "handipick-v4";
+const VERSION = "handipick-v4";
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "GET_VERSION") {
+    event.ports[0].postMessage({ version: VERSION });
+  }
+});
 const PRECACHE = ["/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
