@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface AdminUser {
   id: string;
@@ -50,6 +50,8 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [updating, setUpdating] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Add player form state
   const [showAddPlayer, setShowAddPlayer] = useState(false);
@@ -86,15 +88,22 @@ export default function AdminPage() {
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  function loadUsers() {
+  function loadUsers(q = "") {
     setLoading(true);
-    fetch("/api/admin/users")
+    const url = q ? `/api/admin/users?q=${encodeURIComponent(q)}` : "/api/admin/users";
+    fetch(url)
       .then((r) => r.json())
       .then((data) => { setUsers(data); setLoading(false); })
       .catch(() => { setError("Failed to load users."); setLoading(false); });
   }
 
   useEffect(() => { loadUsers(); }, []);
+
+  useEffect(() => {
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => loadUsers(search), 300);
+    return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
+  }, [search]);
 
   async function updateRole(userId: string, role: string) {
     setUpdating(userId);
@@ -307,7 +316,34 @@ export default function AdminPage() {
         ))}
       </div>
 
+      {/* Search */}
+      <div className="mb-4 relative">
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by name, email, or player ID…"
+          className="w-full bg-slate-900 border border-slate-700 text-slate-100 rounded-xl px-4 py-2.5 pl-10 text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500"
+        />
+        <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+        </svg>
+        {search && (
+          <button
+            onClick={() => setSearch("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-lg leading-none"
+          >
+            ×
+          </button>
+        )}
+      </div>
+
       {/* User table */}
+      {search && !loading && (
+        <p className="text-xs text-slate-500 mb-2">
+          {users.length === 0 ? "No results found." : `${users.length} result${users.length !== 1 ? "s" : ""} for "${search}"`}
+        </p>
+      )}
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <div className="w-6 h-6 border-2 border-teal-400 border-t-transparent rounded-full animate-spin" />
