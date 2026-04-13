@@ -83,6 +83,12 @@ function LoginForm() {
             />
           </div>
 
+          <div className="flex justify-end">
+            <Link href="/forgot-password" className="text-xs text-slate-500 hover:text-teal-400 transition-colors">
+              Forgot password?
+            </Link>
+          </div>
+
           <button
             type="submit" disabled={submitting}
             className="w-full py-2.5 rounded-lg bg-teal-500 hover:bg-teal-400 disabled:opacity-60 disabled:cursor-not-allowed text-slate-950 font-semibold transition-colors"
