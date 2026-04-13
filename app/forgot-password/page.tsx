@@ -88,7 +88,11 @@ export default function ForgotPasswordPage() {
               </button>
             </form>
 
-            <p className="mt-6 text-center text-sm text-slate-500">
+            <p className="mt-5 rounded-lg bg-slate-800 border border-slate-700 px-4 py-3 text-slate-400 text-xs text-center">
+              Signed in with Google? Your password is managed by Google — no reset needed here.
+            </p>
+
+            <p className="mt-4 text-center text-sm text-slate-500">
               Remember it?{" "}
               <Link href="/login" className="text-teal-400 hover:underline">
                 Sign in
