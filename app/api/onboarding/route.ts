@@ -13,13 +13,22 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
-    include: { player: true },
+    select: {
+      name: true,
+      termsAcceptedAt: true,
+      dataShareConsentAt: true,
+      emailConsentAt: true,
+      player: true,
+    },
   });
 
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   return NextResponse.json({
     userName: user.name,
+    termsAccepted: !!user.termsAcceptedAt,
+    dataShareAccepted: !!user.dataShareConsentAt,
+    emailConsentAt: user.emailConsentAt,
     player: user.player,
   });
 }

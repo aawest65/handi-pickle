@@ -39,6 +39,11 @@ export default function RegisterPage() {
   const [password, setPassword]               = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  // Step 3 — Consent
+  const [termsAccepted, setTermsAccepted]       = useState(false);
+  const [dataShareAccepted, setDataShareAccepted] = useState(false);
+  const [emailConsent, setEmailConsent]         = useState(false);
+
   const [fieldError, setFieldError] = useState("");
   const [serverError, setServerError] = useState("");
   const [submitting, setSubmitting]   = useState(false);
@@ -73,6 +78,8 @@ export default function RegisterPage() {
     if (password.length < 8)           { setFieldError("Password must be at least 8 characters."); return; }
     if (!confirmPassword)              { setFieldError("Please confirm your password."); return; }
     if (password !== confirmPassword)  { setFieldError("Passwords do not match."); return; }
+    if (!termsAccepted)                { setFieldError("You must accept the Terms of Service and Privacy Policy."); return; }
+    if (!dataShareAccepted)            { setFieldError("You must agree to the data sharing terms to use HandiPick."); return; }
 
     setSubmitting(true);
     setServerError("");
@@ -81,7 +88,7 @@ export default function RegisterPage() {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, email, password, termsAccepted, dataShareAccepted, emailConsent }),
       });
       const data = await res.json();
       if (res.status === 409) { setServerError("An account with that email already exists."); return; }
@@ -252,6 +259,50 @@ export default function RegisterPage() {
                   placeholder="Re-enter your password"
                 />
               </div>
+            </div>
+
+            <div className="space-y-3">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-teal-500"
+                />
+                <span className="text-sm text-slate-300">
+                  I agree to the{" "}
+                  <a href="/terms" target="_blank" className="text-teal-400 hover:underline">Terms of Service</a>
+                  {" "}and{" "}
+                  <a href="/privacy" target="_blank" className="text-teal-400 hover:underline">Privacy Policy</a>
+                  <span className="text-red-400 ml-1">*</span>
+                </span>
+              </label>
+
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={dataShareAccepted}
+                  onChange={(e) => setDataShareAccepted(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-teal-500"
+                />
+                <span className="text-sm text-slate-300">
+                  I agree that HandiPick may share my name, rating, and contact email with tournament directors and club organizers for match seeding and club management
+                  <span className="text-red-400 ml-1">*</span>
+                </span>
+              </label>
+
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={emailConsent}
+                  onChange={(e) => setEmailConsent(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-teal-500"
+                />
+                <span className="text-sm text-slate-300">
+                  I&apos;d like to receive rating updates, match notifications, and HandiPick news by email{" "}
+                  <span className="text-slate-500">(optional)</span>
+                </span>
+              </label>
             </div>
 
             {fieldError && <p className="text-sm text-red-400">{fieldError}</p>}

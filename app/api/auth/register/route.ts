@@ -5,12 +5,26 @@ import bcrypt from "bcryptjs";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { email, name, password } = body;
+    const { email, name, password, termsAccepted, dataShareAccepted, emailConsent } = body;
 
     // Validate required fields
     if (!email || !name || !password) {
       return NextResponse.json(
         { error: "Email, name, and password are required." },
+        { status: 400 }
+      );
+    }
+
+    // Validate consent — both required fields must be true
+    if (!termsAccepted) {
+      return NextResponse.json(
+        { error: "You must accept the Terms of Service and Privacy Policy." },
+        { status: 400 }
+      );
+    }
+    if (!dataShareAccepted) {
+      return NextResponse.json(
+        { error: "You must agree to the data sharing terms." },
         { status: 400 }
       );
     }
@@ -44,9 +58,18 @@ export async function POST(req: NextRequest) {
     // Hash password
     const hash = await bcrypt.hash(password, 10);
 
-    // Create user
+    const now = new Date();
+
+    // Create user with consent timestamps
     const user = await prisma.user.create({
-      data: { email, name, password: hash },
+      data: {
+        email,
+        name,
+        password: hash,
+        termsAcceptedAt:    termsAccepted    ? now : null,
+        dataShareConsentAt: dataShareAccepted ? now : null,
+        emailConsentAt:     emailConsent      ? now : null,
+      },
     });
 
     return NextResponse.json(

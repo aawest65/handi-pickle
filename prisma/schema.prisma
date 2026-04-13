@@ -58,6 +58,11 @@ model User {
   password      String?
   role          Role      @default(USER)
 
+  // Legal consent — stored as timestamps for audit trail
+  termsAcceptedAt    DateTime? // ToS + Privacy Policy (required)
+  dataShareConsentAt DateTime? // sharing with tournament directors / club admins (required)
+  emailConsentAt     DateTime? // marketing/notification emails (optional, CAN-SPAM compliant)
+
   accounts            Account[]
   sessions            Session[]
   player              Player?

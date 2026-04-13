@@ -32,8 +32,8 @@ const YEARS_OPTIONS = [
   { value: 6, label: "6+ years" },
 ];
 
-// UI steps: 1=Name+DOB  2=Gender+Privacy  3=SkillLevel  4=Format+Years  5=Location  welcome
-type Step = 1 | 2 | 3 | 4 | 5 | "welcome";
+// UI steps: "consent"=Legal consent (Google users only)  1=Name+DOB  2=Gender+Privacy  3=SkillLevel  4=Format+Years  5=Location  welcome
+type Step = "consent" | 1 | 2 | 3 | 4 | 5 | "welcome";
 const TOTAL_STEPS = 5;
 
 interface DuplicatePlayer {
@@ -43,7 +43,7 @@ interface DuplicatePlayer {
 }
 
 function ProgressBar({ step }: { step: Step }) {
-  const n = step === "welcome" ? TOTAL_STEPS : (step as number);
+  const n = step === "welcome" ? TOTAL_STEPS : step === "consent" ? 0 : (step as number);
   return (
     <div className="w-full flex gap-1.5 mb-8">
       {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
@@ -94,6 +94,12 @@ function OnboardingInner() {
   const [duplicateWarning, setDuplicateWarning] = useState<DuplicatePlayer[] | null>(null);
   const [checkingDuplicate, setCheckingDuplicate] = useState(false);
 
+  // Consent step (Google sign-in users who bypassed registration)
+  const [consentTerms, setConsentTerms]           = useState(false);
+  const [consentDataShare, setConsentDataShare]   = useState(false);
+  const [consentEmail, setConsentEmail]           = useState(false);
+  const [consentSaving, setConsentSaving]         = useState(false);
+
   // Welcome animation
   const [rating, setRating]               = useState(0);
   const [displayRating, setDisplayRating] = useState(0);
@@ -114,6 +120,13 @@ function OnboardingInner() {
       .then((r) => r.json())
       .then((data) => {
         if (data.userName) setName(data.userName);
+
+        // If user hasn't accepted terms yet (Google sign-in bypasses registration), gate them first
+        if (!data.termsAccepted) {
+          setStep("consent");
+          return;
+        }
+
         if (data.player) {
           const p = data.player;
           if (p.name)        setName(p.name);
@@ -178,6 +191,27 @@ function OnboardingInner() {
       return null;
     } finally {
       setSaving(false);
+    }
+  }
+
+  // Consent step → Step 1: save legal consent for Google sign-in users
+  async function handleConsent() {
+    if (!consentTerms)     { setError("You must accept the Terms of Service and Privacy Policy."); return; }
+    if (!consentDataShare) { setError("You must agree to the data sharing terms to use HandiPick."); return; }
+    setError("");
+    setConsentSaving(true);
+    try {
+      const res = await fetch("/api/auth/consent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ termsAccepted: true, dataShareAccepted: true, emailConsent: consentEmail }),
+      });
+      if (!res.ok) { const j = await res.json(); setError(j.error ?? "Failed to save consent."); return; }
+      setStep(1);
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setConsentSaving(false);
     }
   }
 
@@ -291,6 +325,70 @@ function OnboardingInner() {
   return (
     <div className="min-h-dvh flex flex-col px-6 py-10 max-w-lg mx-auto">
       <ProgressBar step={step} />
+
+      {/* ── Consent step (Google users who bypassed registration) ── */}
+      {step === "consent" && (
+        <div className="flex flex-col flex-1">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-slate-100">Before you continue</h1>
+            <p className="text-slate-400 mt-2 text-sm">Please review and agree to our terms to use HandiPick.</p>
+          </div>
+
+          <div className="space-y-4 mb-8">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={consentTerms}
+                onChange={(e) => setConsentTerms(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-teal-500"
+              />
+              <span className="text-sm text-slate-300">
+                I agree to the{" "}
+                <a href="/terms" target="_blank" className="text-teal-400 hover:underline">Terms of Service</a>
+                {" "}and{" "}
+                <a href="/privacy" target="_blank" className="text-teal-400 hover:underline">Privacy Policy</a>
+                <span className="text-red-400 ml-1">*</span>
+              </span>
+            </label>
+
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={consentDataShare}
+                onChange={(e) => setConsentDataShare(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-teal-500"
+              />
+              <span className="text-sm text-slate-300">
+                I agree that HandiPick may share my name, rating, and contact email with tournament directors and club organizers for match seeding and club management
+                <span className="text-red-400 ml-1">*</span>
+              </span>
+            </label>
+
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={consentEmail}
+                onChange={(e) => setConsentEmail(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-teal-500"
+              />
+              <span className="text-sm text-slate-300">
+                I&apos;d like to receive rating updates, match notifications, and HandiPick news by email{" "}
+                <span className="text-slate-500">(optional)</span>
+              </span>
+            </label>
+          </div>
+
+          {error && <p className="text-sm text-red-400 mb-4">{error}</p>}
+
+          <button
+            onClick={handleConsent}
+            disabled={consentSaving}
+            className="w-full py-4 bg-teal-500 hover:bg-teal-400 disabled:opacity-60 text-slate-950 font-bold rounded-2xl text-base transition-colors mt-auto"
+          >
+            {consentSaving ? "Saving…" : "Continue →"}
+          </button>
+        </div>
+      )}
 
       {/* ── Step 1: Name + Date of Birth ── */}
       {step === 1 && (
