@@ -63,10 +63,17 @@ model User {
   dataShareConsentAt DateTime? // sharing with tournament directors / club admins (required)
   emailConsentAt     DateTime? // marketing/notification emails (optional, CAN-SPAM compliant)
 
-  accounts            Account[]
-  sessions            Session[]
-  player              Player?
-  passwordResetTokens PasswordResetToken[]
+  isClubAdmin          Boolean @default(false)
+  isTournamentDirector Boolean @default(false)
+
+  accounts              Account[]
+  sessions              Session[]
+  player                Player?
+  passwordResetTokens   PasswordResetToken[]
+  primaryAdminClubs     Club[]               @relation("ClubPrimaryAdmin")
+  backupAdminClubs      Club[]               @relation("ClubBackupAdmin")
+  createdTournaments    Tournament[]         @relation("TournamentCreatedBy")
+  tournamentDirectorFor TournamentDirector[]
 }
 
 model PasswordResetToken {
@@ -111,14 +118,20 @@ model SportsmanshipRating {
 }
 
 model Club {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  city        String?
-  state       String?
-  description String?
-  createdAt   DateTime @default(now())
+  id             String   @id @default(cuid())
+  name           String   @unique
+  city           String?
+  state          String?
+  description    String?
+  status         String   @default("ACTIVE") // ACTIVE
+  primaryAdminId String?
+  backupAdminId  String?
+  createdAt      DateTime @default(now())
 
-  players Player[]
+  primaryAdmin User?        @relation("ClubPrimaryAdmin", fields: [primaryAdminId], references: [id], onDelete: SetNull)
+  backupAdmin  User?        @relation("ClubBackupAdmin",  fields: [backupAdminId],  references: [id], onDelete: SetNull)
+  players      Player[]
+  tournaments  Tournament[]
 }
 
 model Player {
@@ -162,9 +175,67 @@ model Player {
   team2Player1Games    Game[]                @relation("T2P1")
   team2Player2Games    Game[]                @relation("T2P2")
   ratingHistory        RatingHistory[]
-  categoryRatings      PlayerCategoryRating[]
-  sportsmanshipGiven   SportsmanshipRating[] @relation("Rater")
-  sportsmanshipReceived SportsmanshipRating[] @relation("RatedPlayer")
+  categoryRatings        PlayerCategoryRating[]
+  sportsmanshipGiven     SportsmanshipRating[]    @relation("Rater")
+  sportsmanshipReceived  SportsmanshipRating[]    @relation("RatedPlayer")
+  tournamentRegistrations TournamentRegistration[]
+}
+
+model Tournament {
+  id                   String    @id @default(cuid())
+  name                 String
+  description          String?
+  location             String?
+  city                 String?
+  state                String?
+  startDate            DateTime
+  endDate              DateTime
+  registrationOpenAt   DateTime?
+  registrationCloseAt  DateTime?
+  // status:   DRAFT | REGISTRATION | IN_PROGRESS | COMPLETED | CANCELLED
+  status               String    @default("DRAFT")
+  // format:   SINGLES | DOUBLES | MIXED | ALL
+  format               String    @default("ALL")
+  // gameType: TOURNEY_REG | TOURNEY_MEDAL | BOTH
+  gameType             String    @default("TOURNEY_REG")
+  maxParticipants      Int?
+  createdById          String
+  clubId               String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  createdBy     User                     @relation("TournamentCreatedBy", fields: [createdById], references: [id])
+  club          Club?                    @relation(fields: [clubId], references: [id], onDelete: SetNull)
+  directors     TournamentDirector[]
+  registrations TournamentRegistration[]
+  games         Game[]
+}
+
+model TournamentDirector {
+  tournamentId String
+  userId       String
+  isPrimary    Boolean @default(false)
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId],       references: [id], onDelete: Cascade)
+
+  @@id([tournamentId, userId])
+}
+
+model TournamentRegistration {
+  id           String    @id @default(cuid())
+  tournamentId String
+  playerId     String
+  // status: CONFIRMED | WAITLISTED | WITHDRAWN
+  status       String    @default("CONFIRMED")
+  registeredAt DateTime  @default(now())
+  confirmedAt  DateTime? @default(now())
+  seed         Int?
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  player     Player     @relation(fields: [playerId],     references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, playerId])
 }
 
 // gameType: REC | CLUB | TOURNEY_REG | TOURNEY_MEDAL
@@ -181,15 +252,17 @@ model Game {
   team2Score     Int
   createdAt      DateTime @default(now())
 
+  tournamentId   String?
   team1Player1Id String
   team1Player2Id String?
   team2Player1Id String
   team2Player2Id String?
 
-  team1Player1  Player  @relation("T1P1", fields: [team1Player1Id], references: [id])
-  team1Player2  Player? @relation("T1P2", fields: [team1Player2Id], references: [id])
-  team2Player1  Player  @relation("T2P1", fields: [team2Player1Id], references: [id])
-  team2Player2  Player? @relation("T2P2", fields: [team2Player2Id], references: [id])
+  team1Player1  Player      @relation("T1P1", fields: [team1Player1Id], references: [id])
+  team1Player2  Player?     @relation("T1P2", fields: [team1Player2Id], references: [id])
+  team2Player1  Player      @relation("T2P1", fields: [team2Player1Id], references: [id])
+  team2Player2  Player?     @relation("T2P2", fields: [team2Player2Id], references: [id])
+  tournament    Tournament? @relation(fields: [tournamentId], references: [id], onDelete: SetNull)
 
   ratingHistory        RatingHistory[]
   sportsmanshipRatings SportsmanshipRating[]
