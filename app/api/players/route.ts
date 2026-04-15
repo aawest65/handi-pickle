@@ -66,16 +66,18 @@ export async function POST(request: NextRequest) {
 
     const player = await prisma.player.create({
       data: {
-        userId:            user.id,
+        userId:             user.id,
         name,
-        dateOfBirth:       dob,
+        dateOfBirth:        dob,
         gender,
-        city:              city?.trim() || null,
-        state:             state?.trim() || null,
-        selfRatedCategory: category,
+        city:               city?.trim() || null,
+        state:              state?.trim() || null,
+        selfRatedCategory:  category,
         initialRating,
-        currentRating:     initialRating,
-        playerNumber:      await generatePlayerNumber(name),
+        currentRating:      initialRating,
+        playerNumber:       await generatePlayerNumber(name),
+        sportsmanshipSum:   4.9,  // seeds grade at A until peer ratings come in
+        sportsmanshipCount: 1,
       },
     });
 
