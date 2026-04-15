@@ -66,15 +66,16 @@ export async function POST(request: NextRequest) {
 
     const player = await prisma.player.create({
       data: {
-        userId:           user.id,
+        userId:            user.id,
         name,
-        dateOfBirth:      dob,
+        dateOfBirth:       dob,
         gender,
-        city:             city?.trim() || null,
-        state:            state?.trim() || null,
+        city:              city?.trim() || null,
+        state:             state?.trim() || null,
         selfRatedCategory: category,
-        currentRating:    initialRating,
-        playerNumber:     await generatePlayerNumber(name),
+        initialRating,
+        currentRating:     initialRating,
+        playerNumber:      await generatePlayerNumber(name),
       },
     });
 

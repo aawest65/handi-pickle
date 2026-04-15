@@ -139,6 +139,13 @@ export function calcNewRating(params: {
   };
 }
 
+// Collapse TOURNEY_REG / TOURNEY_MEDAL → TOURNEY for category-level tracking.
+export function toGameCategory(gameType: string): "REC" | "CLUB" | "TOURNEY" {
+  if (gameType === "REC")  return "REC";
+  if (gameType === "CLUB") return "CLUB";
+  return "TOURNEY";
+}
+
 // Determine the rating format for a game.
 export function getRatingFormat(format: string, isMixed: boolean): "SINGLES" | "DOUBLES" | "MIXED" {
   if (format === "SINGLES") return "SINGLES";
@@ -156,20 +163,10 @@ export function detectMixed(
   return new Set([...team1Genders, ...team2Genders]).size > 1;
 }
 
-// Pick the format-specific rating for a player.
-// If the player has never played this format (0 games), seed from currentRating.
-function formatRating(player: {
-  currentRating: number;
-  singlesRating: number; singlesGamesPlayed: number;
-  doublesRating: number; doublesGamesPlayed: number;
-  mixedRating:   number; mixedGamesPlayed:   number;
-}, fmt: "SINGLES" | "DOUBLES" | "MIXED"): number {
-  if (fmt === "SINGLES") return player.singlesGamesPlayed > 0 ? player.singlesRating : player.currentRating;
-  if (fmt === "DOUBLES") return player.doublesGamesPlayed > 0 ? player.doublesRating : player.currentRating;
-  return player.mixedGamesPlayed > 0 ? player.mixedRating : player.currentRating;
-}
-
 // Process a game and update all player ratings in the database.
+// Each (format × gameCategory) cell is an independent rating track seeded from
+// the player's initialRating. Format-level ratings and currentRating are
+// games-weighted averages derived from the category tracks.
 export async function processGame(gameId: string): Promise<void> {
   const { prisma } = await import("@/lib/prisma");
 
@@ -183,105 +180,178 @@ export async function processGame(gameId: string): Promise<void> {
     },
   });
 
-  type PlayerRecord = typeof game.team1Player1;
+  type PlayerRecord = NonNullable<typeof game.team1Player1>;
 
   const team1 = [game.team1Player1, game.team1Player2].filter(Boolean) as PlayerRecord[];
   const team2 = [game.team2Player1, game.team2Player2].filter(Boolean) as PlayerRecord[];
+  const allPlayers = [...team1, ...team2];
 
   const team1Genders = team1.map(p => p.gender);
   const team2Genders = team2.map(p => p.gender);
 
   const isMixed      = detectMixed(team1Genders, team2Genders, game.format);
   const ratingFormat = getRatingFormat(game.format, isMixed);
+  const gameCategory = toGameCategory(game.gameType);
 
-  // Store isMixed on the game record
   await prisma.game.update({ where: { id: gameId }, data: { isMixed } });
 
-  const team1Ages = team1.map(p => pickleballAge(p.dateOfBirth));
-  const team2Ages = team2.map(p => pickleballAge(p.dateOfBirth));
+  // Fetch existing category ratings for all players in this (format, gameCategory).
+  const existingCatRows = await prisma.playerCategoryRating.findMany({
+    where: {
+      playerId:     { in: allPlayers.map(p => p.id) },
+      format:       ratingFormat,
+      gameCategory,
+    },
+  });
 
-  // Use format-specific ratings for the calculation
-  const team1Rates = team1.map(p => formatRating(p, ratingFormat));
-  const team2Rates = team2.map(p => formatRating(p, ratingFormat));
+  // Category rating before this game — seed from initialRating if no prior record.
+  const catBefore = new Map<string, number>();
+  for (const player of allPlayers) {
+    const row = existingCatRows.find(r => r.playerId === player.id);
+    catBefore.set(player.id, row?.rating ?? player.initialRating);
+  }
 
-  const updates: { player: PlayerRecord; result: RatingResult; formatRatingBefore: number }[] = [];
+  const team1Ages     = team1.map(p => pickleballAge(p.dateOfBirth));
+  const team2Ages     = team2.map(p => pickleballAge(p.dateOfBirth));
+  const team1CatRates = team1.map(p => catBefore.get(p.id)!);
+  const team2CatRates = team2.map(p => catBefore.get(p.id)!);
+
+  type UpdateEntry = {
+    player: PlayerRecord;
+    result: RatingResult;
+    before: number;
+    won:    boolean;
+  };
+
+  const updates: UpdateEntry[] = [];
 
   for (let i = 0; i < team1.length; i++) {
     const player  = team1[i];
     const partner = team1[i === 0 ? 1 : 0] ?? null;
-    const before  = formatRating(player, ratingFormat);
-    const result  = calcNewRating({
-      playerRate:    before,
-      playerAge:     pickleballAge(player.dateOfBirth),
-      playerGender:  player.gender,
-      partnerRate:   partner ? formatRating(partner, ratingFormat) : null,
-      partnerAge:    partner ? pickleballAge(partner.dateOfBirth) : null,
-      partnerGender: partner?.gender ?? null,
-      oppRates:      team2Rates,
-      oppAges:       team2Ages,
-      oppGenders:    team2Genders,
-      myScore:       game.team1Score,
-      oppScore:      game.team2Score,
-      gameType:      game.gameType,
+    updates.push({
+      player,
+      result: calcNewRating({
+        playerRate:    catBefore.get(player.id)!,
+        playerAge:     pickleballAge(player.dateOfBirth),
+        playerGender:  player.gender,
+        partnerRate:   partner ? catBefore.get(partner.id)! : null,
+        partnerAge:    partner ? pickleballAge(partner.dateOfBirth) : null,
+        partnerGender: partner?.gender ?? null,
+        oppRates:      team2CatRates,
+        oppAges:       team2Ages,
+        oppGenders:    team2Genders,
+        myScore:       game.team1Score,
+        oppScore:      game.team2Score,
+        gameType:      game.gameType,
+      }),
+      before: catBefore.get(player.id)!,
+      won:    game.team1Score > game.team2Score,
     });
-    updates.push({ player, result, formatRatingBefore: before });
   }
 
   for (let i = 0; i < team2.length; i++) {
     const player  = team2[i];
     const partner = team2[i === 0 ? 1 : 0] ?? null;
-    const before  = formatRating(player, ratingFormat);
-    const result  = calcNewRating({
-      playerRate:    before,
-      playerAge:     pickleballAge(player.dateOfBirth),
-      playerGender:  player.gender,
-      partnerRate:   partner ? formatRating(partner, ratingFormat) : null,
-      partnerAge:    partner ? pickleballAge(partner.dateOfBirth) : null,
-      partnerGender: partner?.gender ?? null,
-      oppRates:      team1Rates,
-      oppAges:       team1Ages,
-      oppGenders:    team1Genders,
-      myScore:       game.team2Score,
-      oppScore:      game.team1Score,
-      gameType:      game.gameType,
+    updates.push({
+      player,
+      result: calcNewRating({
+        playerRate:    catBefore.get(player.id)!,
+        playerAge:     pickleballAge(player.dateOfBirth),
+        playerGender:  player.gender,
+        partnerRate:   partner ? catBefore.get(partner.id)! : null,
+        partnerAge:    partner ? pickleballAge(partner.dateOfBirth) : null,
+        partnerGender: partner?.gender ?? null,
+        oppRates:      team1CatRates,
+        oppAges:       team1Ages,
+        oppGenders:    team1Genders,
+        myScore:       game.team2Score,
+        oppScore:      game.team1Score,
+        gameType:      game.gameType,
+      }),
+      before: catBefore.get(player.id)!,
+      won:    game.team2Score > game.team1Score,
     });
-    updates.push({ player, result, formatRatingBefore: before });
   }
 
-  for (const { player, result, formatRatingBefore } of updates) {
-    // Format-specific field names
-    const ratingField      = ratingFormat === "SINGLES" ? "singlesRating"
-                           : ratingFormat === "DOUBLES" ? "doublesRating"
-                           : "mixedRating";
-    const gamesPlayedField = ratingFormat === "SINGLES" ? "singlesGamesPlayed"
-                           : ratingFormat === "DOUBLES" ? "doublesGamesPlayed"
-                           : "mixedGamesPlayed";
+  for (const { player, result, before, won } of updates) {
+    const clampedCatRating = Math.min(8.0, Math.max(1.0, result.newRating));
 
-    const clampedRating = Math.min(8.0, Math.max(1.0, result.newRating));
-
-    await prisma.ratingHistory.create({
-      data: {
-        playerId:      player.id,
-        gameId,
-        ratingFormat,
-        ratingBefore:  formatRatingBefore,
-        ratingAfter:   clampedRating,
-        delta:         clampedRating - formatRatingBefore,
-        winLossFactor: result.factors.winLoss,
-        typeFactor:    result.factors.type,
-        genderFactor:  result.factors.gender,
-        ageFactor:     result.factors.age,
-        rateTypeFactor:result.factors.rateType,
+    // 1. Upsert the category rating track for this (format, gameCategory).
+    await prisma.playerCategoryRating.upsert({
+      where: {
+        playerId_format_gameCategory: {
+          playerId: player.id,
+          format:   ratingFormat,
+          gameCategory,
+        },
+      },
+      create: {
+        playerId:    player.id,
+        format:      ratingFormat,
+        gameCategory,
+        rating:      clampedCatRating,
+        gamesPlayed: 1,
+        wins:        won ? 1 : 0,
+      },
+      update: {
+        rating:      clampedCatRating,
+        gamesPlayed: { increment: 1 },
+        ...(won && { wins: { increment: 1 } }),
       },
     });
 
+    // 2. Re-fetch all category rows (now includes the just-upserted row) and
+    //    compute games-weighted averages for format-level ratings and currentRating.
+    const allCatRows = await prisma.playerCategoryRating.findMany({
+      where: { playerId: player.id },
+    });
+
+    const fmtAvg = (fmt: string) => {
+      const rows  = allCatRows.filter(r => r.format === fmt);
+      const games = rows.reduce((s, r) => s + r.gamesPlayed, 0);
+      const wsum  = rows.reduce((s, r) => s + r.rating * r.gamesPlayed, 0);
+      return { rating: games > 0 ? wsum / games : player.initialRating, games };
+    };
+
+    const s = fmtAvg("SINGLES");
+    const d = fmtAvg("DOUBLES");
+    const m = fmtAvg("MIXED");
+
+    const totalGames    = s.games + d.games + m.games;
+    const overallRating = totalGames > 0
+      ? (s.rating * s.games + d.rating * d.games + m.rating * m.games) / totalGames
+      : player.initialRating;
+    const clampedOverall = Math.min(8.0, Math.max(1.0, overallRating));
+
+    // 3. Record RatingHistory using the category-level before/after.
+    await prisma.ratingHistory.create({
+      data: {
+        playerId:       player.id,
+        gameId,
+        ratingFormat,
+        ratingBefore:   before,
+        ratingAfter:    clampedCatRating,
+        delta:          clampedCatRating - before,
+        winLossFactor:  result.factors.winLoss,
+        typeFactor:     result.factors.type,
+        genderFactor:   result.factors.gender,
+        ageFactor:      result.factors.age,
+        rateTypeFactor: result.factors.rateType,
+      },
+    });
+
+    // 4. Update Player denorm fields.
     await prisma.player.update({
       where: { id: player.id },
       data: {
-        [ratingField]:      clampedRating,
-        [gamesPlayedField]: { increment: 1 },
-        currentRating: clampedRating,
-        gamesPlayed:   { increment: 1 },
+        singlesRating:      s.rating,
+        doublesRating:      d.rating,
+        mixedRating:        m.rating,
+        singlesGamesPlayed: s.games,
+        doublesGamesPlayed: d.games,
+        mixedGamesPlayed:   m.games,
+        currentRating:      clampedOverall,
+        gamesPlayed:        { increment: 1 },
       },
     });
   }

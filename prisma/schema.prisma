@@ -79,6 +79,37 @@ model PasswordResetToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model PlayerCategoryRating {
+  id           String   @id @default(cuid())
+  playerId     String
+  format       String   // SINGLES | DOUBLES | MIXED
+  gameCategory String   // REC | CLUB | TOURNEY
+  rating       Float    @default(3.0)
+  gamesPlayed  Int      @default(0)
+  wins         Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([playerId, format, gameCategory])
+}
+
+model SportsmanshipRating {
+  id            String   @id @default(cuid())
+  gameId        String
+  raterId       String
+  ratedPlayerId String
+  score         Int      // 1–5
+  createdAt     DateTime @default(now())
+
+  game        Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  rater       Player @relation("Rater", fields: [raterId], references: [id], onDelete: Cascade)
+  ratedPlayer Player @relation("RatedPlayer", fields: [ratedPlayerId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, raterId, ratedPlayerId])
+}
+
 model Club {
   id          String   @id @default(cuid())
   name        String   @unique
@@ -101,6 +132,7 @@ model Player {
   state              String?
   clubId             String?
   selfRatedCategory  String   @default("NOVICE")
+  initialRating      Float    @default(3.0)
   currentRating      Float    @default(3.0)
   gamesPlayed        Int      @default(0)
 
@@ -119,15 +151,20 @@ model Player {
   avatarUrl          String?
   onboardingComplete Boolean  @default(false)
   showAge            Boolean  @default(true)
+  sportsmanshipSum   Float    @default(0)
+  sportsmanshipCount Int      @default(0)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   club Club? @relation(fields: [clubId], references: [id], onDelete: SetNull)
 
-  team1Player1Games Game[]         @relation("T1P1")
-  team1Player2Games Game[]         @relation("T1P2")
-  team2Player1Games Game[]         @relation("T2P1")
-  team2Player2Games Game[]         @relation("T2P2")
-  ratingHistory     RatingHistory[]
+  team1Player1Games    Game[]                @relation("T1P1")
+  team1Player2Games    Game[]                @relation("T1P2")
+  team2Player1Games    Game[]                @relation("T2P1")
+  team2Player2Games    Game[]                @relation("T2P2")
+  ratingHistory        RatingHistory[]
+  categoryRatings      PlayerCategoryRating[]
+  sportsmanshipGiven   SportsmanshipRating[] @relation("Rater")
+  sportsmanshipReceived SportsmanshipRating[] @relation("RatedPlayer")
 }
 
 // gameType: REC | CLUB | TOURNEY_REG | TOURNEY_MEDAL
@@ -154,7 +191,8 @@ model Game {
   team2Player1  Player  @relation("T2P1", fields: [team2Player1Id], references: [id])
   team2Player2  Player? @relation("T2P2", fields: [team2Player2Id], references: [id])
 
-  ratingHistory RatingHistory[]
+  ratingHistory        RatingHistory[]
+  sportsmanshipRatings SportsmanshipRating[]
 }
 
 model RatingHistory {
