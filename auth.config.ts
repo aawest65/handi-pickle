@@ -10,18 +10,22 @@ import Credentials from "next-auth/providers/credentials";
 declare module "next-auth" {
   interface Session {
     user: {
-      onboardingComplete: boolean;
-      playerId: string | null;
-      role: string;
+      onboardingComplete:   boolean;
+      playerId:             string | null;
+      role:                 string;
+      isClubAdmin:          boolean;
+      isTournamentDirector: boolean;
     } & import("next-auth").DefaultSession["user"];
   }
 }
 
 declare module "@auth/core/jwt" {
   interface JWT {
-    onboardingComplete: boolean;
-    playerId: string | null;
-    role: string;
+    onboardingComplete:   boolean;
+    playerId:             string | null;
+    role:                 string;
+    isClubAdmin:          boolean;
+    isTournamentDirector: boolean;
   }
 }
 

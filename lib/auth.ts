@@ -8,18 +8,22 @@ import bcrypt from "bcryptjs";
 declare module "next-auth" {
   interface Session {
     user: {
-      onboardingComplete: boolean;
-      playerId: string | null;
-      role: string;
+      onboardingComplete:   boolean;
+      playerId:             string | null;
+      role:                 string;
+      isClubAdmin:          boolean;
+      isTournamentDirector: boolean;
     } & DefaultSession["user"];
   }
 }
 
 declare module "@auth/core/jwt" {
   interface JWT {
-    onboardingComplete: boolean;
-    playerId: string | null;
-    role: string;
+    onboardingComplete:   boolean;
+    playerId:             string | null;
+    role:                 string;
+    isClubAdmin:          boolean;
+    isTournamentDirector: boolean;
   }
 }
 
@@ -60,19 +64,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           where: { id: token.sub },
           select: {
             role: true,
+            isClubAdmin: true,
+            isTournamentDirector: true,
             player: { select: { id: true, onboardingComplete: true } },
           },
         });
-        token.role = dbUser?.role ?? "USER";
-        token.onboardingComplete = dbUser?.player?.onboardingComplete ?? false;
-        token.playerId = dbUser?.player?.id ?? null;
+        token.role                 = dbUser?.role                 ?? "USER";
+        token.isClubAdmin          = dbUser?.isClubAdmin          ?? false;
+        token.isTournamentDirector = dbUser?.isTournamentDirector ?? false;
+        token.onboardingComplete   = dbUser?.player?.onboardingComplete ?? false;
+        token.playerId             = dbUser?.player?.id ?? null;
       }
       return token;
     },
     async session({ session, token }) {
-      session.user.onboardingComplete = (token.onboardingComplete as boolean) ?? false;
-      session.user.playerId = (token.playerId as string | null) ?? null;
-      session.user.role = (token.role as string) ?? "USER";
+      session.user.role                 = (token.role as string)           ?? "USER";
+      session.user.isClubAdmin          = (token.isClubAdmin as boolean)   ?? false;
+      session.user.isTournamentDirector = (token.isTournamentDirector as boolean) ?? false;
+      session.user.onboardingComplete   = (token.onboardingComplete as boolean)   ?? false;
+      session.user.playerId             = (token.playerId as string | null) ?? null;
       return session;
     },
   },
