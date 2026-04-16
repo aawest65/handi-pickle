@@ -19,7 +19,24 @@ export async function PATCH(
   if (denied) return denied;
 
   const { id } = await params;
-  const { name, email, selfRatedCategory, currentRating } = await req.json();
+  const { name, email, selfRatedCategory, currentRating, isClubAdmin, isTournamentDirector } = await req.json();
+
+  // Flag-only update (toggles from the role panel)
+  if (isClubAdmin !== undefined || isTournamentDirector !== undefined) {
+    const updated = await prisma.user.update({
+      where: { id },
+      data: {
+        ...(isClubAdmin          !== undefined && { isClubAdmin }),
+        ...(isTournamentDirector !== undefined && { isTournamentDirector }),
+      },
+      select: {
+        id: true, name: true, email: true, role: true,
+        isClubAdmin: true, isTournamentDirector: true,
+        player: { select: { id: true, playerNumber: true, currentRating: true, gamesPlayed: true, selfRatedCategory: true, onboardingComplete: true } },
+      },
+    });
+    return NextResponse.json(updated);
+  }
 
   const user = await prisma.user.findUnique({ where: { id }, include: { player: true } });
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -64,6 +81,7 @@ export async function PATCH(
     where: { id },
     select: {
       id: true, name: true, email: true, role: true,
+      isClubAdmin: true, isTournamentDirector: true,
       player: { select: { id: true, playerNumber: true, currentRating: true, gamesPlayed: true, selfRatedCategory: true, onboardingComplete: true } },
     },
   });

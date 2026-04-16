@@ -35,6 +35,8 @@ export async function GET(req: NextRequest) {
       name: true,
       email: true,
       role: true,
+      isClubAdmin: true,
+      isTournamentDirector: true,
       player: {
         select: {
           id: true,

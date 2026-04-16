@@ -8,6 +8,8 @@ interface AdminUser {
   name: string | null;
   email: string | null;
   role: "USER" | "ADMIN" | "SUPER_ADMIN";
+  isClubAdmin: boolean;
+  isTournamentDirector: boolean;
   player: {
     id: string;
     playerNumber: string;
@@ -104,6 +106,24 @@ export default function AdminPage() {
     searchTimer.current = setTimeout(() => loadUsers(search), 300);
     return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
   }, [search]);
+
+  async function toggleFlag(userId: string, flag: "isClubAdmin" | "isTournamentDirector", current: boolean) {
+    setUpdating(userId);
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [flag]: !current }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      const updated = await res.json();
+      setUsers((prev) => prev.map((u) => u.id === userId ? { ...u, ...updated } : u));
+    } catch {
+      setError("Failed to update role.");
+    } finally {
+      setUpdating(null);
+    }
+  }
 
   async function updateRole(userId: string, role: string) {
     setUpdating(userId);
@@ -414,6 +434,29 @@ export default function AdminPage() {
                             Delete
                           </button>
                         )}
+                      </div>
+                    )}
+                    {isSuperAdmin && user.id !== session?.user?.id && (
+                      <div className="flex gap-1.5 mt-2 flex-wrap">
+                        {(["isClubAdmin", "isTournamentDirector"] as const).map((flag) => {
+                          const active = user[flag];
+                          const label  = flag === "isClubAdmin" ? "Club Admin" : "Tournament Director";
+                          return (
+                            <button
+                              key={flag}
+                              disabled={updating === user.id}
+                              onClick={() => toggleFlag(user.id, flag, active)}
+                              className={`px-2 py-0.5 rounded text-xs font-medium border transition-colors disabled:opacity-50 ${
+                                active
+                                  ? "bg-emerald-900/50 border-emerald-600 text-emerald-300 hover:bg-red-900/40 hover:border-red-600 hover:text-red-300"
+                                  : "bg-slate-800 border-slate-600 text-slate-500 hover:border-emerald-600 hover:text-emerald-400"
+                              }`}
+                              title={active ? `Revoke ${label}` : `Grant ${label}`}
+                            >
+                              {active ? "✓ " : "+ "}{label}
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
                   </td>
