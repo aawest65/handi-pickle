@@ -9,6 +9,41 @@ import crypto from "crypto";
 const VALID_CATEGORIES = ["NOVICE", "INTERMEDIATE", "ADVANCED", "PRO"] as const;
 type Category = (typeof VALID_CATEGORIES)[number];
 
+// GET /api/admin/players?q=name&limit=20 — search players (ADMIN+ or Tournament Director)
+export async function GET(req: NextRequest) {
+  const session = await auth();
+  const role                 = session?.user?.role as string | undefined;
+  const isTournamentDirector = (session?.user as { isTournamentDirector?: boolean })?.isTournamentDirector ?? false;
+  const isClubAdmin          = (session?.user as { isClubAdmin?: boolean })?.isClubAdmin ?? false;
+  if (!session || (role !== "ADMIN" && role !== "SUPER_ADMIN" && !isTournamentDirector && !isClubAdmin)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const q     = req.nextUrl.searchParams.get("q") ?? "";
+  const limit = Math.min(Number(req.nextUrl.searchParams.get("limit") ?? "20"), 100);
+
+  const players = await prisma.player.findMany({
+    where: q ? {
+      OR: [
+        { name:         { contains: q, mode: "insensitive" } },
+        { playerNumber: { contains: q, mode: "insensitive" } },
+      ],
+    } : undefined,
+    orderBy: { name: "asc" },
+    take: limit,
+    select: {
+      id: true,
+      name: true,
+      playerNumber: true,
+      currentRating: true,
+      gender: true,
+      gamesPlayed: true,
+    },
+  });
+
+  return NextResponse.json(players);
+}
+
 // POST /api/admin/players — create a placeholder User + Player
 export async function POST(req: NextRequest) {
   const session = await auth();

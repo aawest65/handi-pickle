@@ -323,6 +323,11 @@ export default function AdminPage() {
                 Clubs
               </a>
             )}
+            {isAdmin && (
+              <a href="/admin/tournaments" className={BTN_GHOST}>
+                Tournaments
+              </a>
+            )}
             <button onClick={() => { setShowReassign(true); setReassignError(""); }} className={BTN_GHOST}>
               Reassign Player
             </button>

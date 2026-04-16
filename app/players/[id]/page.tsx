@@ -59,10 +59,13 @@ async function getPlayer(id: string) {
 
 // ─── sub-components ──────────────────────────────────────────────────────────
 
-function StatBox({ label, children }: { label: string; children: React.ReactNode }) {
+function StatBox({ label, mobileLabel, children }: { label: string; mobileLabel?: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col items-center justify-center px-4 py-2 min-w-[72px]">
-      <div className="text-[10px] font-semibold tracking-widest text-slate-400 uppercase mb-1">{label}</div>
+    <div className="flex flex-col items-center justify-center px-2 py-2 md:px-4 min-w-0">
+      <div className="text-[9px] md:text-[10px] font-semibold tracking-widest text-slate-400 uppercase mb-1 text-center leading-tight">
+        <span className="md:hidden">{mobileLabel ?? label}</span>
+        <span className="hidden md:inline">{label}</span>
+      </div>
       {children}
     </div>
   );
@@ -126,7 +129,7 @@ export default async function PlayerProfilePage({
   ] as const;
 
   return (
-    <div className="max-w-4xl mx-auto py-10 px-4 space-y-6">
+    <div className="max-w-4xl mx-auto py-6 md:py-10 px-3 md:px-4 space-y-6">
 
       {/* ── Profile card ─────────────────────────────────────────────────── */}
       <div className="bg-slate-800 border border-slate-700 rounded-2xl overflow-hidden">
@@ -140,7 +143,7 @@ export default async function PlayerProfilePage({
         </div>
 
         {/* Main profile section */}
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           <div className="flex flex-col sm:flex-row gap-6">
 
             {/* Avatar */}
@@ -164,14 +167,14 @@ export default async function PlayerProfilePage({
               </p>
 
               {/* Stats row */}
-              <div className="mt-4 flex flex-wrap divide-x divide-slate-700 border border-slate-700 rounded-xl overflow-hidden w-fit">
+              <div className="mt-4 grid grid-cols-3 md:flex md:flex-nowrap divide-y divide-x-0 md:divide-y-0 md:divide-x divide-slate-700 border border-slate-700 rounded-xl overflow-hidden w-full md:w-fit">
 
                 <StatBox label="Level">
                   <span className="text-xl font-bold text-slate-100">{player.currentRating.toFixed(1)}</span>
                 </StatBox>
 
                 <StatBox label="Gender">
-                  <span className="text-lg font-semibold text-slate-200">
+                  <span className="text-base font-semibold text-slate-200">
                     {player.gender === "MALE" ? "Male" : "Female"}
                   </span>
                 </StatBox>
@@ -186,7 +189,7 @@ export default async function PlayerProfilePage({
                   <span className="text-xl font-bold text-amber-400">{player.currentRating.toFixed(2)}</span>
                 </StatBox>
 
-                <StatBox label="Sportsmanship">
+                <StatBox label="Sportsmanship" mobileLabel="Sport.">
                   <div className={`w-9 h-9 rounded-full flex items-center justify-center text-base font-bold border-2 ${
                     sportGrade === "—"
                       ? "border-slate-600 text-slate-500"
@@ -204,7 +207,7 @@ export default async function PlayerProfilePage({
                     <span className="text-lg font-bold text-slate-500">—</span>
                   ) : (
                     <>
-                      <span className="text-lg font-bold text-sky-400 tabular-nums leading-tight">
+                      <span className="text-base font-bold text-sky-400 tabular-nums leading-tight">
                         {totalWins} / {totalLosses}
                       </span>
                       <span className="text-xs text-slate-400 tabular-nums">
@@ -220,8 +223,50 @@ export default async function PlayerProfilePage({
         </div>
 
         {/* ── Category rating grid ─────────────────────────────────────────── */}
-        <div className="px-6 pb-6">
-          <div className="overflow-x-auto rounded-xl border border-slate-700">
+        <div className="px-4 md:px-6 pb-6">
+
+          {/* Mobile: stacked cards (one per category) */}
+          <div className="md:hidden space-y-3">
+            {CATEGORIES.map(({ key, label }) => {
+              const doublesRow = catRow("DOUBLES", key);
+              const mixedRow   = catRow("MIXED",   key);
+              const singlesRow = catRow("SINGLES", key);
+              return (
+                <div key={key} className="rounded-xl border border-slate-700 overflow-hidden">
+                  <div className="bg-[#1b3a2b] px-3 py-2 text-emerald-300 text-xs font-semibold uppercase tracking-wide">
+                    {label}
+                  </div>
+                  <div className="grid grid-cols-3 divide-x divide-slate-700 bg-slate-800">
+                    {[
+                      { row: doublesRow, title: doublesLabel },
+                      { row: mixedRow,   title: "Mixed Dbl" },
+                      { row: singlesRow, title: "Singles"   },
+                    ].map(({ row, title }) => (
+                      <div key={title} className="flex flex-col items-center py-3 px-1">
+                        <div className="text-[9px] font-semibold tracking-wide text-emerald-300 uppercase mb-1 text-center leading-tight">
+                          {title}
+                        </div>
+                        {row && row.gamesPlayed > 0 ? (
+                          <>
+                            <div className="text-base font-bold text-slate-100">{row.rating.toFixed(2)}</div>
+                            <div className="text-[10px] text-slate-400 mt-0.5">{row.gamesPlayed}g</div>
+                            <div className={`text-[10px] font-semibold mt-0.5 ${reliabilityColor(Math.round(calcReliability(row.gamesPlayed) * 100))}`}>
+                              {Math.round(calcReliability(row.gamesPlayed) * 100)}%
+                            </div>
+                          </>
+                        ) : (
+                          <div className="text-slate-500 text-lg font-medium">—</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop: table */}
+          <div className="hidden md:block overflow-x-auto rounded-xl border border-slate-700">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-[#1b3a2b] text-emerald-300">
@@ -255,8 +300,8 @@ export default async function PlayerProfilePage({
           </div>
 
           {/* Reliability legend */}
-          <div className="flex items-center gap-4 mt-3 text-xs text-slate-500">
-            <span className="font-medium text-slate-400">Rating reliability (50 games = 100%):</span>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-xs text-slate-500">
+            <span className="font-medium text-slate-400">Reliability (50 games = 100%):</span>
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-teal-400 inline-block" />≥85% High</span>
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-400 inline-block" />70–84% Med</span>
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400 inline-block" />&lt;70% Low</span>
