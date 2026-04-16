@@ -45,8 +45,9 @@ const BTN_GHOST = "px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text
 
 export default function AdminPage() {
   const { data: session } = useSession();
-  const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
-  const isAdmin = session?.user?.role === "ADMIN" || isSuperAdmin;
+  const isSuperAdmin         = session?.user?.role === "SUPER_ADMIN";
+  const isAdmin              = session?.user?.role === "ADMIN" || isSuperAdmin;
+  const isTournamentDirector = (session?.user as { isTournamentDirector?: boolean })?.isTournamentDirector ?? false;
 
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -323,7 +324,7 @@ export default function AdminPage() {
                 Clubs
               </a>
             )}
-            {isAdmin && (
+            {(isAdmin || isTournamentDirector) && (
               <a href="/admin/tournaments" className={BTN_GHOST}>
                 Tournaments
               </a>

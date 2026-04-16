@@ -12,7 +12,8 @@ export default function NavAuth() {
 
   if (status === "authenticated" && session?.user) {
     const displayName = session.user.name ?? session.user.email ?? "Account";
-    const isAdmin = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN";
+    const isAdmin              = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN";
+    const isTournamentDirector = (session.user as { isTournamentDirector?: boolean })?.isTournamentDirector ?? false;
     return (
       <div className="flex items-center gap-3">
         {isAdmin && (
@@ -21,6 +22,14 @@ export default function NavAuth() {
             className="px-3 py-1.5 rounded-md text-sm font-medium text-yellow-400 hover:text-yellow-300 hover:bg-slate-800 transition-colors"
           >
             Admin
+          </Link>
+        )}
+        {!isAdmin && isTournamentDirector && (
+          <Link
+            href="/admin/tournaments"
+            className="px-3 py-1.5 rounded-md text-sm font-medium text-teal-400 hover:text-teal-300 hover:bg-slate-800 transition-colors"
+          >
+            Tournaments
           </Link>
         )}
         <Link
