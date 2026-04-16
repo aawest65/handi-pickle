@@ -4,13 +4,18 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
-const GAME_TYPES = ["REC", "CLUB", "TOURNEY_REG", "TOURNEY_MEDAL"] as const;
 const GAME_TYPE_LABELS: Record<string, string> = {
   REC:          "Recreational",
   CLUB:         "Club",
   TOURNEY_REG:  "Tournament — Regular",
   TOURNEY_MEDAL:"Tournament — Medal Round",
 };
+
+interface Tournament {
+  id:   string;
+  name: string;
+  status: string;
+}
 
 interface Player {
   id:     string;
@@ -58,11 +63,20 @@ function PlayerSelect({
 
 export default function MatchesPage() {
   const router = useRouter();
-  const { status } = useSession();
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { data: session, status } = useSession();
+  const role                 = (session?.user as { role?: string })?.role ?? "USER";
+  const isTournamentDirector = (session?.user as { isTournamentDirector?: boolean })?.isTournamentDirector ?? false;
+  const canEnterTournament   = role === "ADMIN" || role === "SUPER_ADMIN" || isTournamentDirector;
+
+  const GAME_TYPES = canEnterTournament
+    ? (["REC", "CLUB", "TOURNEY_REG", "TOURNEY_MEDAL"] as const)
+    : (["REC", "CLUB"] as const);
+
+  const [players, setPlayers]             = useState<Player[]>([]);
+  const [tournaments, setTournaments]     = useState<Tournament[]>([]);
+  const [loading, setLoading]             = useState(false);
+  const [success, setSuccess]             = useState(false);
+  const [error, setError]                 = useState<string | null>(null);
 
   const [gameType, setGameType]           = useState("REC");
   const [format, setFormat]               = useState<"SINGLES" | "DOUBLES">("SINGLES");
@@ -74,8 +88,10 @@ export default function MatchesPage() {
   const [team2Player2Id, setT2P2]         = useState("");
   const [team1Score, setTeam1Score]       = useState<number | "">(0);
   const [team2Score, setTeam2Score]       = useState<number | "">(0);
+  const [tournamentId, setTournamentId]   = useState("");
 
-  const isDoubles = format === "DOUBLES";
+  const isDoubles      = format === "DOUBLES";
+  const isTourneyType  = gameType === "TOURNEY_REG" || gameType === "TOURNEY_MEDAL";
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -91,11 +107,24 @@ export default function MatchesPage() {
   }, []);
 
   useEffect(() => {
+    if (!canEnterTournament) return;
+    fetch("/api/admin/tournaments")
+      .then(r => r.json())
+      .then((data: Tournament[]) => setTournaments(data.filter(t => t.status !== "CANCELLED" && t.status !== "COMPLETED")))
+      .catch(console.error);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canEnterTournament]);
+
+  useEffect(() => {
     if (!isDoubles) {
       setT1P2("");
       setT2P2("");
     }
   }, [isDoubles]);
+
+  useEffect(() => {
+    if (!isTourneyType) setTournamentId("");
+  }, [isTourneyType]);
 
   const allSelectedIds = [team1Player1Id, team1Player2Id, team2Player1Id, team2Player2Id].filter(Boolean);
 
@@ -130,6 +159,9 @@ export default function MatchesPage() {
       if (isDoubles) {
         body.team1Player2Id = team1Player2Id;
         body.team2Player2Id = team2Player2Id;
+      }
+      if (tournamentId) {
+        body.tournamentId = tournamentId;
       }
 
       const res = await fetch("/api/matches", {
@@ -204,6 +236,26 @@ export default function MatchesPage() {
               </select>
             </div>
           </div>
+
+          {/* Tournament selector — only visible to TDs/admins when a tournament type is selected */}
+          {canEnterTournament && isTourneyType && (
+            <div>
+              <InputLabel>Tournament (optional)</InputLabel>
+              <select
+                value={tournamentId}
+                onChange={(e) => setTournamentId(e.target.value)}
+                className="w-full bg-slate-900 border border-teal-700 text-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+              >
+                <option value="">— No tournament —</option>
+                {tournaments.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+              {tournaments.length === 0 && (
+                <p className="text-xs text-slate-500 mt-1">No active tournaments found.</p>
+              )}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
