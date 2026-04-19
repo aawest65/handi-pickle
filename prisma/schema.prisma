@@ -74,6 +74,7 @@ model User {
   backupAdminClubs      Club[]               @relation("ClubBackupAdmin")
   createdTournaments    Tournament[]         @relation("TournamentCreatedBy")
   tournamentDirectorFor TournamentDirector[]
+  clubRequests          ClubRequest[]
 }
 
 model PasswordResetToken {
@@ -123,6 +124,7 @@ model Club {
   city           String?
   state          String?
   description    String?
+  logoUrl        String?
   status         String   @default("ACTIVE") // ACTIVE
   primaryAdminId String?
   backupAdminId  String?
@@ -132,6 +134,26 @@ model Club {
   backupAdmin  User?        @relation("ClubBackupAdmin",  fields: [backupAdminId],  references: [id], onDelete: SetNull)
   players      Player[]
   tournaments  Tournament[]
+  requests     ClubRequest[]
+}
+
+// status: PENDING | APPROVED | REJECTED
+model ClubRequest {
+  id          String   @id @default(cuid())
+  name        String
+  city        String?
+  state       String?
+  description String?
+  logoUrl     String?
+  note        String?
+  status      String   @default("PENDING")
+  requestedById String
+  clubId      String?
+  createdAt   DateTime @default(now())
+  reviewedAt  DateTime?
+
+  requestedBy User  @relation(fields: [requestedById], references: [id], onDelete: Cascade)
+  club        Club? @relation(fields: [clubId], references: [id], onDelete: SetNull)
 }
 
 model Player {

@@ -3,6 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 interface AdminClub {
   id:          string;
@@ -16,6 +17,19 @@ interface AdminClub {
   _count: { players: number };
 }
 
+interface ClubRequest {
+  id:          string;
+  name:        string;
+  city:        string | null;
+  state:       string | null;
+  description: string | null;
+  logoUrl:     string | null;
+  note:        string | null;
+  status:      string;
+  createdAt:   string;
+  requestedBy: { id: string; name: string | null; email: string | null };
+}
+
 const INPUT       = "w-full bg-slate-800 border border-slate-600 text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 placeholder-slate-500";
 const BTN_PRIMARY = "px-4 py-2 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors";
 const BTN_GHOST   = "px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm rounded-lg transition-colors";
@@ -27,6 +41,13 @@ export default function AdminClubsPage() {
 
   const [clubs, setClubs]     = useState<AdminClub[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Club requests
+  const [requests, setRequests]         = useState<ClubRequest[]>([]);
+  const [requestsLoading, setRequestsLoading] = useState(true);
+  const [reviewingId, setReviewingId]   = useState<string | null>(null);
+  const [reviewError, setReviewError]   = useState("");
+  const [expandedNote, setExpandedNote] = useState<string | null>(null);
 
   // Create form
   const [name, setName]               = useState("");
@@ -50,7 +71,37 @@ export default function AdminClubsPage() {
       .finally(() => setLoading(false));
   }
 
-  useEffect(() => { if (isAdmin) loadClubs(); }, [isAdmin]);
+  function loadRequests() {
+    setRequestsLoading(true);
+    fetch("/api/admin/club-requests?status=PENDING")
+      .then((r) => r.json())
+      .then((d) => setRequests(d))
+      .finally(() => setRequestsLoading(false));
+  }
+
+  useEffect(() => {
+    if (isAdmin) { loadClubs(); loadRequests(); }
+  }, [isAdmin]);
+
+  async function handleReview(id: string, action: "APPROVE" | "REJECT") {
+    setReviewingId(id);
+    setReviewError("");
+    try {
+      const res  = await fetch(`/api/admin/club-requests/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setReviewError(data.error ?? "Failed"); return; }
+      setRequests((prev) => prev.filter((r) => r.id !== id));
+      if (action === "APPROVE") loadClubs();
+    } catch {
+      setReviewError("Network error");
+    } finally {
+      setReviewingId(null);
+    }
+  }
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -110,6 +161,112 @@ export default function AdminClubsPage() {
           + New Club
         </button>
       </div>
+
+      {/* Pending Requests */}
+      {(requestsLoading || requests.length > 0) && (
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-slate-200 mb-3 flex items-center gap-2">
+            Pending Club Requests
+            {requests.length > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-amber-900/50 border border-amber-700/50 text-amber-300 text-xs font-bold">
+                {requests.length}
+              </span>
+            )}
+          </h2>
+
+          {reviewError && (
+            <div className="mb-3 px-3 py-2 rounded-lg bg-red-900/40 border border-red-700 text-red-300 text-sm">{reviewError}</div>
+          )}
+
+          {requestsLoading ? (
+            <div className="flex items-center gap-2 text-slate-500 text-sm py-4">
+              <div className="w-4 h-4 border-2 border-teal-400 border-t-transparent rounded-full animate-spin" />
+              Loading requests…
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {requests.map((req) => (
+                <div key={req.id} className="bg-slate-800 border border-amber-800/40 rounded-xl p-4">
+                  <div className="flex items-start gap-4">
+                    {/* Logo */}
+                    {req.logoUrl && (
+                      <div className="w-14 h-14 rounded-lg overflow-hidden border border-slate-600 bg-slate-700 shrink-0 flex items-center justify-center">
+                        <Image
+                          src={req.logoUrl}
+                          alt={`${req.name} logo`}
+                          width={56}
+                          height={56}
+                          className="w-full h-full object-contain"
+                          unoptimized
+                        />
+                      </div>
+                    )}
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-slate-100">{req.name}</span>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-amber-900/40 border border-amber-700/50 text-amber-300">
+                          PENDING
+                        </span>
+                      </div>
+
+                      {(req.city || req.state) && (
+                        <p className="text-slate-500 text-xs mt-0.5">
+                          {[req.city, req.state].filter(Boolean).join(", ")}
+                        </p>
+                      )}
+                      {req.description && (
+                        <p className="text-slate-400 text-xs mt-1 italic">{req.description}</p>
+                      )}
+
+                      <p className="text-xs text-slate-500 mt-1.5">
+                        Requested by{" "}
+                        <span className="text-slate-300">{req.requestedBy.name ?? req.requestedBy.email}</span>
+                        {" · "}
+                        {new Date(req.createdAt).toLocaleDateString()}
+                      </p>
+
+                      {req.note && (
+                        <div className="mt-2">
+                          <button
+                            onClick={() => setExpandedNote(expandedNote === req.id ? null : req.id)}
+                            className="text-xs text-teal-500 hover:text-teal-400 transition-colors"
+                          >
+                            {expandedNote === req.id ? "Hide note ▲" : "View note ▼"}
+                          </button>
+                          {expandedNote === req.id && (
+                            <p className="mt-1 text-xs text-slate-400 bg-slate-900/60 rounded-lg px-3 py-2 border border-slate-700">
+                              {req.note}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex flex-col gap-2 shrink-0">
+                      <button
+                        onClick={() => handleReview(req.id, "APPROVE")}
+                        disabled={reviewingId === req.id}
+                        className="px-3 py-1.5 bg-teal-700 hover:bg-teal-600 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors"
+                      >
+                        {reviewingId === req.id ? "…" : "Approve"}
+                      </button>
+                      <button
+                        onClick={() => handleReview(req.id, "REJECT")}
+                        disabled={reviewingId === req.id}
+                        className="px-3 py-1.5 bg-red-900/40 hover:bg-red-800/60 disabled:opacity-50 text-red-400 text-xs rounded-lg border border-red-800/50 transition-colors"
+                      >
+                        {reviewingId === req.id ? "…" : "Reject"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-8">
