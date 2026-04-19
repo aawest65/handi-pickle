@@ -1,10 +1,12 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { pickleballAge } from "@/lib/pickleballAge";
+import { ReliabilityBar } from "@/app/components/ReliabilityBar";
 
 interface PlayerProfile {
   playerNumber: string;
@@ -16,10 +18,17 @@ interface PlayerProfile {
   selfRatedCategory: string;
   currentRating: number;
   gamesPlayed: number;
+  singlesRating: number;
+  doublesRating: number;
+  mixedRating: number;
+  singlesGamesPlayed: number;
+  doublesGamesPlayed: number;
+  mixedGamesPlayed: number;
   dominantHand: string | null;
   yearsPlaying: number | null;
   preferredFormat: string | null;
   showAge: boolean;
+  avatarUrl: string | null;
 }
 
 export default function ProfilePage() {
@@ -29,6 +38,10 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [showAge, setShowAge] = useState(true);
   const [savingAge, setSavingAge] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
@@ -40,7 +53,10 @@ export default function ProfilePage() {
       .then((r) => r.json())
       .then((d) => {
         setPlayer(d.player ?? null);
-        if (d.player) setShowAge(d.player.showAge ?? true);
+        if (d.player) {
+          setShowAge(d.player.showAge ?? true);
+          setAvatarUrl(d.player.avatarUrl ?? null);
+        }
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -67,13 +83,95 @@ export default function ProfilePage() {
 
   const initials = player.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarError("");
+    setUploadingAvatar(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/profile/avatar", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) { setAvatarError(data.error ?? "Upload failed"); return; }
+      setAvatarUrl(data.avatarUrl);
+    } catch {
+      setAvatarError("Upload failed. Please try again.");
+    } finally {
+      setUploadingAvatar(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  async function handleRemoveAvatar() {
+    setAvatarError("");
+    setUploadingAvatar(true);
+    try {
+      const res = await fetch("/api/profile/avatar", { method: "DELETE" });
+      if (res.ok) setAvatarUrl(null);
+    } catch {
+      setAvatarError("Failed to remove photo.");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  }
+
   return (
     <div className="max-w-lg mx-auto px-4 py-8">
       {/* Avatar + name */}
       <div className="flex flex-col items-center gap-3 mb-8">
-        <div className="w-20 h-20 rounded-full bg-teal-500/20 border-2 border-teal-500 flex items-center justify-center">
-          <span className="text-2xl font-bold text-teal-400">{initials}</span>
+        <div className="relative group">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadingAvatar}
+            className="w-20 h-20 rounded-full overflow-hidden border-2 border-teal-500 bg-teal-500/20 flex items-center justify-center relative focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-offset-2 focus:ring-offset-slate-950"
+            aria-label="Change profile photo"
+          >
+            {avatarUrl ? (
+              <Image
+                src={avatarUrl}
+                alt={player.name}
+                fill
+                className="object-cover"
+                sizes="80px"
+              />
+            ) : (
+              <span className="text-2xl font-bold text-teal-400">{initials}</span>
+            )}
+            {/* Hover overlay */}
+            <span className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
+              {uploadingAvatar ? (
+                <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              )}
+            </span>
+          </button>
+          {avatarUrl && !uploadingAvatar && (
+            <button
+              onClick={handleRemoveAvatar}
+              className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-600 hover:bg-red-500 border border-slate-900 flex items-center justify-center transition-colors"
+              aria-label="Remove profile photo"
+            >
+              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
         </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          className="hidden"
+          onChange={handleAvatarChange}
+        />
+        {avatarError && (
+          <p className="text-xs text-red-400">{avatarError}</p>
+        )}
         <div className="text-center">
           <h1 className="text-xl font-bold text-slate-100">{player.name}</h1>
           <p className="text-sm text-slate-400">
@@ -93,6 +191,28 @@ export default function ProfilePage() {
           <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Games Played</p>
           <p className="text-4xl font-bold text-slate-100">{player.gamesPlayed}</p>
         </div>
+      </div>
+
+      {/* Per-format ratings */}
+      <div className="grid grid-cols-3 gap-3 mb-4">
+        {[
+          { label: "Singles",       rating: player.singlesRating, games: player.singlesGamesPlayed },
+          { label: "Doubles",       rating: player.doublesRating, games: player.doublesGamesPlayed },
+          { label: "Mixed",         rating: player.mixedRating,   games: player.mixedGamesPlayed   },
+        ].map(({ label, rating, games }) => (
+          <div key={label} className="bg-slate-900 border border-slate-700 rounded-xl p-3">
+            <p className="text-xs text-slate-500 mb-1">{label}</p>
+            {games === 0 ? (
+              <p className="text-xl font-bold text-slate-600">—</p>
+            ) : (
+              <>
+                <p className="text-xl font-bold text-teal-400">{rating.toFixed(3)}</p>
+                <p className="text-xs text-slate-500 mt-0.5 mb-1.5">{games} game{games !== 1 ? "s" : ""}</p>
+                <ReliabilityBar gamesPlayed={games} compact />
+              </>
+            )}
+          </div>
+        ))}
       </div>
 
       {/* Details */}
