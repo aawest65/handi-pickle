@@ -48,7 +48,7 @@ const navLinks = [
   { href: "/players", label: "Players" },
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/tournaments", label: "Tournaments" },
-  { href: "/leagues", label: "Leagues" },
+  { href: "/clubs", label: "Clubs" },
   { href: "/matches", label: "Record Match" },
 ];
 
