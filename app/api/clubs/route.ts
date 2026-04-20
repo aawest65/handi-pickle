@@ -7,7 +7,15 @@ export async function GET() {
   try {
     const clubs = await prisma.club.findMany({
       orderBy: { name: "asc" },
-      select: { id: true, name: true, city: true, state: true, description: true },
+      select: {
+        id: true,
+        name: true,
+        city: true,
+        state: true,
+        description: true,
+        logoUrl: true,
+        _count: { select: { players: true } },
+      },
     });
     return NextResponse.json(clubs);
   } catch (error) {
