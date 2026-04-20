@@ -14,6 +14,7 @@ interface AdminUser {
     id: string;
     playerNumber: string;
     currentRating: number;
+    initialRating: number;
     gamesPlayed: number;
     selfRatedCategory: string;
     onboardingComplete: boolean;
@@ -88,7 +89,7 @@ export default function AdminPage() {
 
   // Edit user state
   const [editUser, setEditUser] = useState<AdminUser | null>(null);
-  const [editForm, setEditForm] = useState({ name: "", email: "", selfRatedCategory: "", currentRating: "" });
+  const [editForm, setEditForm] = useState({ name: "", email: "", selfRatedCategory: "", initialRating: "" });
   const [editError, setEditError] = useState("");
   const [editLoading, setEditLoading] = useState(false);
 
@@ -249,7 +250,7 @@ export default function AdminPage() {
       name: user.name ?? "",
       email: user.email ?? "",
       selfRatedCategory: user.player?.selfRatedCategory ?? "",
-      currentRating: user.player?.currentRating.toFixed(2) ?? "",
+      initialRating: user.player?.initialRating?.toFixed(2) ?? user.player?.currentRating.toFixed(2) ?? "",
     });
     setEditError("");
   }
@@ -266,8 +267,8 @@ export default function AdminPage() {
       };
       if (editUser.player) {
         payload.selfRatedCategory = editForm.selfRatedCategory;
-        const r = parseFloat(editForm.currentRating);
-        if (!isNaN(r)) payload.currentRating = r;
+        const r = parseFloat(editForm.initialRating);
+        if (!isNaN(r)) payload.initialRating = r;
       }
       const res = await fetch(`/api/admin/users/${editUser.id}`, {
         method: "PATCH",
@@ -276,6 +277,21 @@ export default function AdminPage() {
       });
       const data = await res.json();
       if (!res.ok) { setEditError(data.error ?? "Failed to update"); return; }
+
+      // If starting rating changed, replay via the player endpoint
+      if (editUser.player && payload.initialRating !== undefined) {
+        const ratingRes = await fetch(`/api/admin/players/${editUser.player.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ initialRating: payload.initialRating }),
+        });
+        if (!ratingRes.ok) {
+          const rd = await ratingRes.json();
+          setEditError(rd.error ?? "Failed to update rating");
+          return;
+        }
+      }
+
       setUsers((prev) => prev.map((u) => u.id === editUser.id ? data : u));
       setEditUser(null);
     } catch {
@@ -712,16 +728,19 @@ export default function AdminPage() {
                     <p className="text-xs text-slate-600 mt-1">Changing category does not reset the rating — adjust it separately below if needed.</p>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-1">Current Rating</label>
+                    <label className="block text-xs font-medium text-slate-400 mb-1">Starting Rating</label>
                     <input
                       type="number"
                       step="0.05"
                       min="1.0"
                       max="8.0"
-                      value={editForm.currentRating}
-                      onChange={(e) => setEditForm((f) => ({ ...f, currentRating: e.target.value }))}
+                      value={editForm.initialRating}
+                      onChange={(e) => setEditForm((f) => ({ ...f, initialRating: e.target.value }))}
                       className={INPUT}
                     />
+                    <p className="text-xs text-slate-600 mt-1">
+                      Changes the opening rating and replays all recorded games from that new starting point.
+                    </p>
                   </div>
                 </>
               )}

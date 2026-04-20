@@ -42,6 +42,7 @@ export async function GET(req: NextRequest) {
           id: true,
           playerNumber: true,
           currentRating: true,
+          initialRating: true,
           gamesPlayed: true,
           selfRatedCategory: true,
           onboardingComplete: true,
