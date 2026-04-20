@@ -552,7 +552,7 @@ export default function AdminPage() {
       {/* ── Add Player Modal ── */}
       {showAddPlayer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-          <div className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-6">
+          <div className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl p-6 max-h-[90dvh] overflow-y-auto">
             <h2 className="text-lg font-bold text-teal-400 mb-1">Add Player</h2>
             <p className="text-xs text-slate-500 mb-5">
               Creates a placeholder account ({"{name}"}@example.com) immediately active for match recording.
@@ -603,23 +603,18 @@ export default function AdminPage() {
 
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1">Skill Level *</label>
-                <div className="grid grid-cols-2 gap-2">
+                <select
+                  value={addForm.selfRatedCategory}
+                  onChange={(e) => setAddForm((f) => ({ ...f, selfRatedCategory: e.target.value }))}
+                  className={INPUT}
+                  required
+                >
                   {CATEGORIES.map((cat) => (
-                    <button
-                      key={cat.value}
-                      type="button"
-                      onClick={() => setAddForm((f) => ({ ...f, selfRatedCategory: cat.value }))}
-                      className={`text-left px-3 py-2 rounded-lg border text-xs transition-all ${
-                        addForm.selfRatedCategory === cat.value
-                          ? "border-teal-500 bg-teal-900/30 text-slate-100"
-                          : "border-slate-600 bg-slate-800 text-slate-400 hover:border-slate-500"
-                      }`}
-                    >
-                      <div className="font-semibold">{cat.label}</div>
-                      <div className="text-teal-400 mt-0.5">Starting: {cat.rating.toFixed(1)}</div>
-                    </button>
+                    <option key={cat.value} value={cat.value}>
+                      {cat.label} — Starting: {cat.rating.toFixed(1)}
+                    </option>
                   ))}
-                </div>
+                </select>
               </div>
 
               <div>
