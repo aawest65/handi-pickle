@@ -40,13 +40,8 @@ const BTN_GHOST   = "px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 te
 export default function ClubDetailPage() {
   const { id }       = useParams<{ id: string }>();
   const { data: session } = useSession();
-  const isSuperAdmin    = session?.user?.role === "SUPER_ADMIN";
-  const isAdmin         = session?.user?.role === "ADMIN" || isSuperAdmin;
-  const isClubManager   = !isAdmin && !!session?.user?.isClubAdmin && !!club && (
-    club.primaryAdmin?.id === session?.user?.id ||
-    club.backupAdmin?.id  === session?.user?.id
-  );
-  const canInvite = isAdmin || isClubManager;
+  const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
+  const isAdmin      = session?.user?.role === "ADMIN" || isSuperAdmin;
 
   const [club, setClub]       = useState<ClubDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -185,6 +180,12 @@ export default function ClubDetailPage() {
       </div>
     );
   }
+
+  const isClubManager = !isAdmin && !!session?.user?.isClubAdmin && (
+    club.primaryAdmin?.id === session?.user?.id ||
+    club.backupAdmin?.id  === session?.user?.id
+  );
+  const canInvite = isAdmin || isClubManager;
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
