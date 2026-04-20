@@ -19,6 +19,10 @@ interface Member {
   currentRating: number;
   gamesPlayed: number;
   gender: string;
+  city: string | null;
+  state: string | null;
+  dateOfBirth: string;
+  showAge: boolean;
 }
 
 interface ClubDetail {
@@ -320,53 +324,74 @@ export default function ClubDetailPage() {
 
       {/* ── Member roster ────────────────────────────────────────────────── */}
       <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
-        <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wide mb-4">
-          Members ({club.players.length})
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wide">
+            Roster — {club.players.length} member{club.players.length !== 1 ? "s" : ""}
+          </h2>
+        </div>
 
         {club.players.length === 0 ? (
           <p className="text-slate-500 text-sm text-center py-6">No members yet.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-700">
-                  <th className="text-left pb-2 text-slate-400 font-medium">Player</th>
-                  <th className="text-center pb-2 text-slate-400 font-medium hidden sm:table-cell">Rating</th>
-                  <th className="text-center pb-2 text-slate-400 font-medium hidden sm:table-cell">Games</th>
-                  <th className="text-right pb-2 text-slate-400 font-medium"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {club.players.map((p) => (
-                  <tr key={p.id} className="border-b border-slate-700/50 last:border-0">
-                    <td className="py-2.5">
-                      <div className="flex items-baseline gap-2">
-                        <Link href={`/players/${p.id}`} className="font-medium text-slate-200 hover:text-teal-400 transition-colors">
-                          {p.name}
-                        </Link>
-                        <span className="text-xs text-slate-500">{p.playerNumber}</span>
-                      </div>
-                      <div className="text-xs text-slate-500">{p.gender === "MALE" ? "Male" : "Female"}</div>
-                    </td>
-                    <td className="py-2.5 text-center hidden sm:table-cell text-teal-400 font-semibold">
-                      {p.currentRating.toFixed(2)}
-                    </td>
-                    <td className="py-2.5 text-center hidden sm:table-cell text-slate-300">
-                      {p.gamesPlayed}
-                    </td>
-                    <td className="py-2.5 text-right">
-                      <button
-                        onClick={() => setRemoveTarget(p)}
-                        className="text-xs text-slate-500 hover:text-red-400 transition-colors"
+          <div className="divide-y divide-slate-700/50">
+            {club.players.map((p) => {
+              const age = p.showAge
+                ? new Date().getUTCFullYear() - new Date(p.dateOfBirth).getUTCFullYear()
+                : null;
+              const location = [p.city, p.state].filter(Boolean).join(", ");
+
+              return (
+                <div key={p.id} className="py-3 flex items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    {/* Name + ID */}
+                    <div className="flex items-baseline gap-2 flex-wrap">
+                      <Link
+                        href={`/players/${p.id}`}
+                        className="font-semibold text-slate-100 hover:text-teal-400 transition-colors"
                       >
-                        Remove
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                        {p.name}
+                      </Link>
+                      <span className="text-xs text-slate-500">{p.playerNumber}</span>
+                    </div>
+
+                    {/* Gender · Age · Location */}
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap text-xs text-slate-400">
+                      <span>{p.gender === "MALE" ? "Male" : "Female"}</span>
+                      {age !== null && (
+                        <>
+                          <span className="text-slate-600">·</span>
+                          <span>Age {age}</span>
+                        </>
+                      )}
+                      {location && (
+                        <>
+                          <span className="text-slate-600">·</span>
+                          <span>{location}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Rating + Games */}
+                  <div className="flex items-center gap-4 shrink-0 text-right">
+                    <div className="hidden sm:block text-center">
+                      <p className="text-teal-400 font-semibold text-sm">{p.currentRating.toFixed(2)}</p>
+                      <p className="text-xs text-slate-500">rating</p>
+                    </div>
+                    <div className="hidden sm:block text-center">
+                      <p className="text-slate-300 font-semibold text-sm">{p.gamesPlayed}</p>
+                      <p className="text-xs text-slate-500">games</p>
+                    </div>
+                    <button
+                      onClick={() => setRemoveTarget(p)}
+                      className="text-xs text-slate-500 hover:text-red-400 transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
