@@ -78,6 +78,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return token;
     },
     async session({ session, token }) {
+      if (token.sub) session.user.id = token.sub;
       session.user.role                 = (token.role as string)           ?? "USER";
       session.user.isClubAdmin          = (token.isClubAdmin as boolean)   ?? false;
       session.user.isTournamentDirector = (token.isTournamentDirector as boolean) ?? false;

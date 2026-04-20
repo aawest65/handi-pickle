@@ -44,6 +44,7 @@ export const authConfig: NextAuthConfig = {
   pages: { signIn: "/login" },
   callbacks: {
     async session({ session, token }) {
+      if (token.sub) session.user.id = token.sub;
       session.user.role = (token.role as string) ?? "USER";
       session.user.onboardingComplete = (token.onboardingComplete as boolean) ?? false;
       session.user.playerId = (token.playerId as string | null) ?? null;
