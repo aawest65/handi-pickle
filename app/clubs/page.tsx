@@ -17,11 +17,12 @@ interface Club {
 export default function ClubsPage() {
   const { data: session, status } = useSession();
 
-  const [clubs, setClubs]           = useState<Club[]>([]);
+  const [clubs, setClubs]                 = useState<Club[]>([]);
   const [currentClubId, setCurrentClubId] = useState<string | null>(null);
-  const [onboarded, setOnboarded]   = useState(false);
-  const [loading, setLoading]       = useState(true);
-  const [acting, setActing]         = useState<string | null>(null); // clubId being joined/left
+  const [pendingClubIds, setPendingClubIds] = useState<Set<string>>(new Set());
+  const [onboarded, setOnboarded]         = useState(false);
+  const [loading, setLoading]             = useState(true);
+  const [acting, setActing]               = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/clubs")
@@ -33,36 +34,28 @@ export default function ClubsPage() {
 
   useEffect(() => {
     if (status !== "authenticated") return;
-    fetch("/api/onboarding")
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.player?.onboardingComplete) {
-          setOnboarded(true);
-          setCurrentClubId(d.player.clubId ?? null);
-        }
-      })
-      .catch(() => {});
+    Promise.all([
+      fetch("/api/onboarding").then((r) => r.json()),
+      fetch("/api/clubs/join-requests").then((r) => r.json()),
+    ]).then(([onboarding, joinReqs]) => {
+      if (onboarding.player?.onboardingComplete) {
+        setOnboarded(true);
+        setCurrentClubId(onboarding.player.clubId ?? null);
+      }
+      if (Array.isArray(joinReqs)) {
+        setPendingClubIds(
+          new Set(joinReqs.filter((r: { status: string }) => r.status === "PENDING").map((r: { clubId: string }) => r.clubId))
+        );
+      }
+    }).catch(() => {});
   }, [status]);
 
-  async function joinClub(clubId: string) {
+  async function requestJoin(clubId: string) {
     setActing(clubId);
     try {
       const res = await fetch(`/api/clubs/${clubId}/join`, { method: "POST" });
       if (res.ok) {
-        setCurrentClubId(clubId);
-        setClubs((prev) =>
-          prev.map((c) => ({
-            ...c,
-            _count: {
-              players:
-                c.id === clubId
-                  ? c._count.players + 1
-                  : c.id === currentClubId
-                  ? c._count.players - 1
-                  : c._count.players,
-            },
-          }))
-        );
+        setPendingClubIds((prev) => new Set([...prev, clubId]));
       }
     } finally {
       setActing(null);
@@ -126,6 +119,7 @@ export default function ClubsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {clubs.map((club) => {
             const isMember  = currentClubId === club.id;
+            const isPending = !isMember && pendingClubIds.has(club.id);
             const isActing  = acting === club.id;
 
             return (
@@ -181,13 +175,18 @@ export default function ClubsPage() {
                         >
                           {isActing ? "Leaving…" : "Leave club"}
                         </button>
+                      ) : isPending ? (
+                        <span className="inline-flex items-center gap-1 text-xs text-amber-400 font-medium">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                          Request pending
+                        </span>
                       ) : (
                         <button
-                          onClick={() => joinClub(club.id)}
+                          onClick={() => requestJoin(club.id)}
                           disabled={!!acting}
                           className="px-3 py-1.5 bg-teal-700 hover:bg-teal-600 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors"
                         >
-                          {isActing ? "Joining…" : currentClubId ? "Switch to this club" : "Join"}
+                          {isActing ? "Requesting…" : "Request to Join"}
                         </button>
                       )}
                     </div>

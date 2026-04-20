@@ -75,6 +75,7 @@ model User {
   createdTournaments    Tournament[]         @relation("TournamentCreatedBy")
   tournamentDirectorFor TournamentDirector[]
   clubRequests          ClubRequest[]
+  clubJoinReviews       ClubJoinRequest[]    @relation("ClubJoinReviewer")
 }
 
 model PasswordResetToken {
@@ -135,6 +136,7 @@ model Club {
   players      Player[]
   tournaments  Tournament[]
   requests     ClubRequest[]
+  joinRequests ClubJoinRequest[]
 }
 
 // status: PENDING | APPROVED | REJECTED
@@ -154,6 +156,23 @@ model ClubRequest {
 
   requestedBy User  @relation(fields: [requestedById], references: [id], onDelete: Cascade)
   club        Club? @relation(fields: [clubId], references: [id], onDelete: SetNull)
+}
+
+// status: PENDING | APPROVED | REJECTED
+model ClubJoinRequest {
+  id           String    @id @default(cuid())
+  clubId       String
+  playerId     String
+  status       String    @default("PENDING")
+  requestedAt  DateTime  @default(now())
+  reviewedAt   DateTime?
+  reviewedById String?
+
+  club       Club    @relation(fields: [clubId],       references: [id], onDelete: Cascade)
+  player     Player  @relation(fields: [playerId],     references: [id], onDelete: Cascade)
+  reviewedBy User?   @relation("ClubJoinReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@unique([clubId, playerId])
 }
 
 model Player {
@@ -191,6 +210,8 @@ model Player {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   club Club? @relation(fields: [clubId], references: [id], onDelete: SetNull)
+
+  joinRequests ClubJoinRequest[]
 
   team1Player1Games    Game[]                @relation("T1P1")
   team1Player2Games    Game[]                @relation("T1P2")

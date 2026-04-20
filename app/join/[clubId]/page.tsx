@@ -49,7 +49,7 @@ export default function JoinClubPage() {
     setJoining(true);
     setJoinError("");
     try {
-      const res  = await fetch(`/api/clubs/${clubId}/join`, { method: "POST" });
+      const res  = await fetch(`/api/clubs/${clubId}/join`, { method: "PUT" });
       const data = await res.json();
       if (!res.ok) { setJoinError(data.error ?? "Failed to join club"); return; }
       setJoined(true);

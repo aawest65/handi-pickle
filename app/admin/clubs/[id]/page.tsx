@@ -67,6 +67,11 @@ export default function ClubDetailPage() {
   const [removingId, setRemovingId]     = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<Member | null>(null);
 
+  // Join requests
+  interface JoinRequest { id: string; requestedAt: string; player: { id: string; name: string; playerNumber: string; currentRating: number; selfRatedCategory: string; gamesPlayed: number } }
+  const [joinRequests, setJoinRequests]   = useState<JoinRequest[]>([]);
+  const [reviewingId, setReviewingId]     = useState<string | null>(null);
+
   // Invite link
   const [copied, setCopied] = useState(false);
 
@@ -89,6 +94,12 @@ export default function ClubDetailPage() {
       .then((users: { id: string; name: string | null; email: string | null; isClubAdmin: boolean }[]) => {
         setClubAdmins(users.filter((u) => u.isClubAdmin || isSuperAdmin));
       });
+
+    // Load pending join requests
+    fetch(`/api/admin/clubs/${id}/join-requests`)
+      .then((r) => r.ok ? r.json() : [])
+      .then(setJoinRequests)
+      .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -161,6 +172,30 @@ export default function ClubDetailPage() {
       alert("Network error");
     } finally {
       setRemovingId(null);
+    }
+  }
+
+  async function reviewRequest(requestId: string, action: "approve" | "reject") {
+    setReviewingId(requestId);
+    try {
+      const res = await fetch(`/api/admin/clubs/${id}/join-requests/${requestId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      if (!res.ok) { const d = await res.json(); alert(d.error ?? "Failed"); return; }
+      setJoinRequests((prev) => prev.filter((r) => r.id !== requestId));
+      if (action === "approve") {
+        // Refresh club members list
+        fetch(`/api/admin/clubs/${id}`)
+          .then((r) => r.json())
+          .then((d: ClubDetail) => setClub(d))
+          .catch(() => {});
+      }
+    } catch {
+      alert("Network error");
+    } finally {
+      setReviewingId(null);
     }
   }
 
@@ -335,6 +370,55 @@ export default function ClubDetailPage() {
           </div>
         )}
       </div>
+
+      {/* ── Join Requests ────────────────────────────────────────────────── */}
+      {canInvite && (
+        <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
+          <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wide mb-1">
+            Join Requests
+            {joinRequests.length > 0 && (
+              <span className="ml-2 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 text-xs font-bold">
+                {joinRequests.length}
+              </span>
+            )}
+          </h2>
+
+          {joinRequests.length === 0 ? (
+            <p className="text-slate-500 text-sm py-4">No pending requests.</p>
+          ) : (
+            <div className="mt-3 space-y-3">
+              {joinRequests.map((req) => (
+                <div key={req.id} className="flex items-center justify-between gap-3 py-2.5 border-b border-slate-700/50 last:border-0">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-slate-200">{req.player.name}
+                      <span className="ml-2 text-xs text-slate-500">{req.player.playerNumber}</span>
+                    </p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Rating {req.player.currentRating.toFixed(2)} · {req.player.gamesPlayed} games · {req.player.selfRatedCategory.replace(/_/g, " ")}
+                    </p>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={() => reviewRequest(req.id, "reject")}
+                      disabled={!!reviewingId}
+                      className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-600 text-slate-400 hover:text-red-400 hover:border-red-700 disabled:opacity-50 transition-colors"
+                    >
+                      {reviewingId === req.id ? "…" : "Decline"}
+                    </button>
+                    <button
+                      onClick={() => reviewRequest(req.id, "approve")}
+                      disabled={!!reviewingId}
+                      className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-teal-700 hover:bg-teal-600 text-white disabled:opacity-50 transition-colors"
+                    >
+                      {reviewingId === req.id ? "…" : "Approve"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Invite Players ───────────────────────────────────────────────── */}
       {canInvite && (
