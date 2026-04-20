@@ -257,7 +257,7 @@ function OnboardingInner() {
 
   // Step 3 → 4: validate skill, save locally
   function handleStep3() {
-    if (!skillLevel) { setError("Please select your skill level."); return; }
+    if (!isEditMode && !skillLevel) { setError("Please select your skill level."); return; }
     setStep(4);
   }
 
