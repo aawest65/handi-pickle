@@ -4,17 +4,27 @@
 import { pickleballAge } from "@/lib/pickleballAge";
 
 export const CATEGORY_INITIAL_RATING: Record<string, number> = {
-  NOVICE:       2.0,
-  INTERMEDIATE: 3.5,
-  ADVANCED:     4.5,
-  PRO:          6.0,
+  BEGINNER:      2.0,
+  NOVICE:        2.5,
+  NOVICE_PLUS:   3.0,
+  INTERMEDIATE:  3.5,
+  ADVANCED:      4.0,
+  ADVANCED_PLUS: 4.5,
+  EXPERT:        5.0,
+  EXPERT_PLUS:   5.5,
+  PRO:           6.0,
 };
 
 export function categoryFromRating(rating: number): string {
-  if (rating >= 5.5) return "PRO";
-  if (rating >= 4.5) return "ADVANCED";
+  if (rating >= 6.0) return "PRO";
+  if (rating >= 5.5) return "EXPERT_PLUS";
+  if (rating >= 5.0) return "EXPERT";
+  if (rating >= 4.5) return "ADVANCED_PLUS";
+  if (rating >= 4.0) return "ADVANCED";
   if (rating >= 3.5) return "INTERMEDIATE";
-  return "NOVICE";
+  if (rating >= 3.0) return "NOVICE_PLUS";
+  if (rating >= 2.5) return "NOVICE";
+  return "BEGINNER";
 }
 
 // TABLE A — Base win/loss value (always ±0.05)

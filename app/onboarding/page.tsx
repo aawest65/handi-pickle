@@ -13,10 +13,15 @@ const US_STATES = [
 ];
 
 const SKILL_LEVELS = [
-  { value: "NOVICE",       label: "Novice",       desc: "Just starting out",        rating: "2.0" },
-  { value: "INTERMEDIATE", label: "Intermediate", desc: "Developing your game",     rating: "3.5" },
-  { value: "ADVANCED",     label: "Advanced",     desc: "Competitive club player",  rating: "4.5" },
-  { value: "PRO",          label: "Pro",          desc: "Tournament / elite level", rating: "6.0" },
+  { value: "BEGINNER",      label: "Beginner",      desc: "Brand new to pickleball",   rating: "2.0" },
+  { value: "NOVICE",        label: "Novice",         desc: "Learning the basics",       rating: "2.5" },
+  { value: "NOVICE_PLUS",   label: "Novice Plus",    desc: "Getting consistent",        rating: "3.0" },
+  { value: "INTERMEDIATE",  label: "Intermediate",   desc: "Developing your game",      rating: "3.5" },
+  { value: "ADVANCED",      label: "Advanced",       desc: "Competitive club player",   rating: "4.0" },
+  { value: "ADVANCED_PLUS", label: "Advanced Plus",  desc: "Strong competitive player", rating: "4.5" },
+  { value: "EXPERT",        label: "Expert",         desc: "High-level tournament play",rating: "5.0" },
+  { value: "EXPERT_PLUS",   label: "Expert Plus",    desc: "Near-elite level",          rating: "5.5" },
+  { value: "PRO",           label: "Pro",            desc: "Tournament / elite level",  rating: "6.0" },
 ] as const;
 
 const FORMAT_OPTIONS = [
@@ -273,7 +278,7 @@ function OnboardingInner() {
       if (isEditMode) {
         router.push("/profile");
       } else {
-        const ratingMap: Record<string, number> = { NOVICE: 2.0, INTERMEDIATE: 3.5, ADVANCED: 4.5, PRO: 6.0 };
+        const ratingMap: Record<string, number> = { BEGINNER: 2.0, NOVICE: 2.5, NOVICE_PLUS: 3.0, INTERMEDIATE: 3.5, ADVANCED: 4.0, ADVANCED_PLUS: 4.5, EXPERT: 5.0, EXPERT_PLUS: 5.5, PRO: 6.0 };
         setRating(ratingMap[skillLevel] ?? 3.0);
         setStep("welcome");
       }

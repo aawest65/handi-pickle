@@ -13,7 +13,7 @@ export default function ProfileSetupPage() {
   const [gender, setGender] = useState<"MALE" | "FEMALE">("MALE");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
-  const [selfRatedCategory, setSelfRatedCategory] = useState<"NOVICE" | "INTERMEDIATE" | "ADVANCED" | "PRO" | "">("");
+  const [selfRatedCategory, setSelfRatedCategory] = useState<"BEGINNER" | "NOVICE" | "NOVICE_PLUS" | "INTERMEDIATE" | "ADVANCED" | "ADVANCED_PLUS" | "EXPERT" | "EXPERT_PLUS" | "PRO" | "">("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -223,10 +223,15 @@ export default function ProfileSetupPage() {
             <div className="grid grid-cols-2 gap-3">
               {(
                 [
-                  { value: "NOVICE",       label: "Novice",       desc: "Just starting out",         rating: "2.0" },
-                  { value: "INTERMEDIATE", label: "Intermediate", desc: "Developing your game",      rating: "3.5" },
-                  { value: "ADVANCED",     label: "Advanced",     desc: "Competitive club player",   rating: "4.5" },
-                  { value: "PRO",          label: "Pro",          desc: "Tournament / elite level",  rating: "6.0" },
+                  { value: "BEGINNER",      label: "Beginner",      desc: "Brand new to pickleball",    rating: "2.0" },
+                  { value: "NOVICE",        label: "Novice",        desc: "Learning the basics",        rating: "2.5" },
+                  { value: "NOVICE_PLUS",   label: "Novice Plus",   desc: "Getting consistent",         rating: "3.0" },
+                  { value: "INTERMEDIATE",  label: "Intermediate",  desc: "Developing your game",       rating: "3.5" },
+                  { value: "ADVANCED",      label: "Advanced",      desc: "Competitive club player",    rating: "4.0" },
+                  { value: "ADVANCED_PLUS", label: "Advanced Plus", desc: "Strong competitive player",  rating: "4.5" },
+                  { value: "EXPERT",        label: "Expert",        desc: "High-level tournament play", rating: "5.0" },
+                  { value: "EXPERT_PLUS",   label: "Expert Plus",   desc: "Near-elite level",           rating: "5.5" },
+                  { value: "PRO",           label: "Pro",           desc: "Tournament / elite level",   rating: "6.0" },
                 ] as const
               ).map((cat) => (
                 <button

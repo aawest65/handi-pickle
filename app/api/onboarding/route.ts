@@ -110,7 +110,7 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ player });
     }
 
-    const validCategories = ["NOVICE", "INTERMEDIATE", "ADVANCED", "PRO"];
+    const validCategories = ["BEGINNER", "NOVICE", "NOVICE_PLUS", "INTERMEDIATE", "ADVANCED", "ADVANCED_PLUS", "EXPERT", "EXPERT_PLUS", "PRO"];
     if (!validCategories.includes(selfRatedCategory)) {
       return NextResponse.json({ error: "Invalid skill category" }, { status: 400 });
     }

@@ -6,7 +6,7 @@ import { generatePlayerNumber } from "@/lib/playerNumber";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 
-const VALID_CATEGORIES = ["NOVICE", "INTERMEDIATE", "ADVANCED", "PRO"] as const;
+const VALID_CATEGORIES = ["BEGINNER", "NOVICE", "NOVICE_PLUS", "INTERMEDIATE", "ADVANCED", "ADVANCED_PLUS", "EXPERT", "EXPERT_PLUS", "PRO"] as const;
 type Category = (typeof VALID_CATEGORIES)[number];
 
 // GET /api/admin/players?q=name&limit=20 — search players (ADMIN+ or Tournament Director)

@@ -33,10 +33,15 @@ const ROLE_COLORS: Record<string, string> = {
 };
 
 const CATEGORIES = [
-  { value: "NOVICE",       label: "Novice",       rating: 2.0 },
-  { value: "INTERMEDIATE", label: "Intermediate", rating: 3.5 },
-  { value: "ADVANCED",     label: "Advanced",     rating: 4.5 },
-  { value: "PRO",          label: "Pro",          rating: 6.0 },
+  { value: "BEGINNER",      label: "Beginner",      rating: 2.0 },
+  { value: "NOVICE",        label: "Novice",         rating: 2.5 },
+  { value: "NOVICE_PLUS",   label: "Novice Plus",    rating: 3.0 },
+  { value: "INTERMEDIATE",  label: "Intermediate",   rating: 3.5 },
+  { value: "ADVANCED",      label: "Advanced",       rating: 4.0 },
+  { value: "ADVANCED_PLUS", label: "Advanced Plus",  rating: 4.5 },
+  { value: "EXPERT",        label: "Expert",         rating: 5.0 },
+  { value: "EXPERT_PLUS",   label: "Expert Plus",    rating: 5.5 },
+  { value: "PRO",           label: "Pro",            rating: 6.0 },
 ] as const;
 
 const INPUT = "w-full bg-slate-800 border border-slate-600 text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500";
@@ -59,7 +64,7 @@ export default function AdminPage() {
   // Add player form state
   const [showAddPlayer, setShowAddPlayer] = useState(false);
   const [addForm, setAddForm] = useState({
-    name: "", gender: "MALE", dateOfBirth: "", selfRatedCategory: "NOVICE", email: "", overrideRating: "",
+    name: "", gender: "MALE", dateOfBirth: "", selfRatedCategory: "BEGINNER", email: "", overrideRating: "",
   });
   const [addError, setAddError] = useState("");
   const [addLoading, setAddLoading] = useState(false);
@@ -160,7 +165,7 @@ export default function AdminPage() {
       const data = await res.json();
       if (!res.ok) { setAddError(data.error ?? "Failed to create player"); return; }
       setShowAddPlayer(false);
-      setAddForm({ name: "", gender: "MALE", dateOfBirth: "", selfRatedCategory: "NOVICE", email: "", overrideRating: "" });
+      setAddForm({ name: "", gender: "MALE", dateOfBirth: "", selfRatedCategory: "BEGINNER", email: "", overrideRating: "" });
       loadUsers();
     } catch {
       setAddError("Network error");

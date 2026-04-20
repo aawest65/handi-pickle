@@ -22,10 +22,15 @@ interface Club {
 }
 
 const CATEGORY_COLOR: Record<string, string> = {
-  PRO:          "text-yellow-400",
-  ADVANCED:     "text-blue-400",
-  INTERMEDIATE: "text-teal-400",
-  NOVICE:       "text-slate-300",
+  PRO:           "text-yellow-400",
+  EXPERT_PLUS:   "text-orange-400",
+  EXPERT:        "text-purple-400",
+  ADVANCED_PLUS: "text-blue-400",
+  ADVANCED:      "text-cyan-400",
+  INTERMEDIATE:  "text-teal-400",
+  NOVICE_PLUS:   "text-green-400",
+  NOVICE:        "text-slate-300",
+  BEGINNER:      "text-slate-400",
 };
 
 function RatingBadge({ rating }: { rating: number }) {

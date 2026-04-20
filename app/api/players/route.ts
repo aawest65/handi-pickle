@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const VALID_CATEGORIES = ["NOVICE", "INTERMEDIATE", "ADVANCED", "PRO"] as const;
+    const VALID_CATEGORIES = ["BEGINNER", "NOVICE", "NOVICE_PLUS", "INTERMEDIATE", "ADVANCED", "ADVANCED_PLUS", "EXPERT", "EXPERT_PLUS", "PRO"] as const;
     type SkillCategory = typeof VALID_CATEGORIES[number];
 
     const body = await request.json();

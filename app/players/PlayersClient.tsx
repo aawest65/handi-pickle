@@ -20,10 +20,15 @@ interface Player {
 }
 
 const CATEGORY_COLOR: Record<string, string> = {
-  PRO:          "bg-yellow-500/20 text-yellow-300 border-yellow-500/40",
-  ADVANCED:     "bg-blue-500/20 text-blue-300 border-blue-500/40",
-  INTERMEDIATE: "bg-teal-500/20 text-teal-300 border-teal-500/40",
-  NOVICE:       "bg-slate-500/20 text-slate-300 border-slate-500/40",
+  PRO:           "bg-yellow-500/20 text-yellow-300 border-yellow-500/40",
+  EXPERT_PLUS:   "bg-orange-500/20 text-orange-300 border-orange-500/40",
+  EXPERT:        "bg-purple-500/20 text-purple-300 border-purple-500/40",
+  ADVANCED_PLUS: "bg-blue-500/20 text-blue-300 border-blue-500/40",
+  ADVANCED:      "bg-cyan-500/20 text-cyan-300 border-cyan-500/40",
+  INTERMEDIATE:  "bg-teal-500/20 text-teal-300 border-teal-500/40",
+  NOVICE_PLUS:   "bg-green-500/20 text-green-300 border-green-500/40",
+  NOVICE:        "bg-slate-500/20 text-slate-300 border-slate-500/40",
+  BEGINNER:      "bg-slate-600/20 text-slate-400 border-slate-600/40",
 };
 
 export function PlayersClient({ players }: { players: Player[] }) {

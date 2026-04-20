@@ -59,7 +59,7 @@ export async function PATCH(
 
   // Update player record if one exists
   if (user.player && (name || selfRatedCategory || currentRating !== undefined)) {
-    const validCategories = ["NOVICE", "INTERMEDIATE", "ADVANCED", "PRO"];
+    const validCategories = ["BEGINNER", "NOVICE", "NOVICE_PLUS", "INTERMEDIATE", "ADVANCED", "ADVANCED_PLUS", "EXPERT", "EXPERT_PLUS", "PRO"];
     if (selfRatedCategory && !validCategories.includes(selfRatedCategory)) {
       return NextResponse.json({ error: "Invalid category" }, { status: 400 });
     }
