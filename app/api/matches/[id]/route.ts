@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { toGameCategory, getRatingFormat } from "@/lib/rating/algorithm";
 
 export async function DELETE(
   _req: NextRequest,
@@ -14,7 +15,6 @@ export async function DELETE(
   const { id } = await params;
 
   try {
-    // Load game and its rating history
     const game = await prisma.game.findUnique({
       where: { id },
       include: { ratingHistory: true },
@@ -24,32 +24,94 @@ export async function DELETE(
       return NextResponse.json({ error: "Game not found" }, { status: 404 });
     }
 
-    // Reverse rating changes for each player that was affected.
-    // We subtract the stored delta from the player's current rating and decrement
-    // both the format-specific and overall counters.
-    for (const entry of game.ratingHistory) {
-      const ratingField =
-        entry.ratingFormat === "SINGLES" ? "singlesRating"
-        : entry.ratingFormat === "DOUBLES" ? "doublesRating"
-        : "mixedRating";
+    const gameCategory = toGameCategory(game.gameType);
+    const ratingFormat = getRatingFormat(game.format, game.isMixed);
 
-      const gamesPlayedField =
-        entry.ratingFormat === "SINGLES" ? "singlesGamesPlayed"
-        : entry.ratingFormat === "DOUBLES" ? "doublesGamesPlayed"
-        : "mixedGamesPlayed";
+    // Reverse each player's category rating and recompute denorm fields.
+    for (const entry of game.ratingHistory) {
+      const won = entry.winLossFactor > 0;
+
+      // Step back the category rating to ratingBefore; decrement gamesPlayed/wins.
+      const catRow = await prisma.playerCategoryRating.findUnique({
+        where: {
+          playerId_format_gameCategory: {
+            playerId:     entry.playerId,
+            format:       ratingFormat,
+            gameCategory,
+          },
+        },
+      });
+
+      if (catRow) {
+        if (catRow.gamesPlayed <= 1) {
+          await prisma.playerCategoryRating.delete({
+            where: {
+              playerId_format_gameCategory: {
+                playerId:     entry.playerId,
+                format:       ratingFormat,
+                gameCategory,
+              },
+            },
+          });
+        } else {
+          await prisma.playerCategoryRating.update({
+            where: {
+              playerId_format_gameCategory: {
+                playerId:     entry.playerId,
+                format:       ratingFormat,
+                gameCategory,
+              },
+            },
+            data: {
+              rating:      entry.ratingBefore,
+              gamesPlayed: { decrement: 1 },
+              ...(won && { wins: { decrement: 1 } }),
+            },
+          });
+        }
+      }
+
+      // Recompute Player denorm fields from remaining category rows.
+      const allCatRows = await prisma.playerCategoryRating.findMany({
+        where: { playerId: entry.playerId },
+      });
+
+      const fmtAvg = (fmt: string) => {
+        const rows  = allCatRows.filter(r => r.format === fmt);
+        const games = rows.reduce((s, r) => s + r.gamesPlayed, 0);
+        const wsum  = rows.reduce((s, r) => s + r.rating * r.gamesPlayed, 0);
+        return { rating: games > 0 ? wsum / games : null, games };
+      };
+
+      const s = fmtAvg("SINGLES");
+      const d = fmtAvg("DOUBLES");
+      const m = fmtAvg("MIXED");
+
+      const player = await prisma.player.findUnique({
+        where: { id: entry.playerId },
+        select: { initialRating: true, gamesPlayed: true },
+      });
+
+      const totalGames = s.games + d.games + m.games;
+      const overallRating = totalGames > 0
+        ? ((s.rating ?? 0) * s.games + (d.rating ?? 0) * d.games + (m.rating ?? 0) * m.games) / totalGames
+        : player?.initialRating ?? 3.0;
 
       await prisma.player.update({
         where: { id: entry.playerId },
         data: {
-          [ratingField]:      { decrement: entry.delta },
-          [gamesPlayedField]: { decrement: 1 },
-          currentRating:      { decrement: entry.delta },
-          gamesPlayed:        { decrement: 1 },
+          singlesRating:      s.rating ?? player?.initialRating ?? 3.0,
+          doublesRating:      d.rating ?? player?.initialRating ?? 3.0,
+          mixedRating:        m.rating ?? player?.initialRating ?? 3.0,
+          singlesGamesPlayed: s.games,
+          doublesGamesPlayed: d.games,
+          mixedGamesPlayed:   m.games,
+          currentRating:      Math.min(8.0, Math.max(1.0, overallRating)),
+          gamesPlayed:        Math.max(0, (player?.gamesPlayed ?? 1) - 1),
         },
       });
     }
 
-    // Delete rating history first (FK constraint), then the game
     await prisma.ratingHistory.deleteMany({ where: { gameId: id } });
     await prisma.game.delete({ where: { id } });
 
