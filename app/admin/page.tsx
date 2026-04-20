@@ -155,8 +155,9 @@ export default function AdminPage() {
     setAddError("");
     setAddLoading(true);
     try {
-      const payload: Record<string, unknown> = { ...addForm };
-      if (addForm.overrideRating) payload.overrideRating = parseFloat(addForm.overrideRating);
+      const { overrideRating: overrideRatingStr, ...rest } = addForm;
+      const payload: Record<string, unknown> = { ...rest };
+      if (overrideRatingStr) payload.overrideRating = parseFloat(overrideRatingStr);
       const res = await fetch("/api/admin/players", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
