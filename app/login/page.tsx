@@ -7,8 +7,10 @@ import Link from "next/link";
 
 function LoginForm() {
   const searchParams = useSearchParams();
-  const registered = searchParams.get("registered") === "1";
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/";
+  const registered   = searchParams.get("registered") === "1";
+  const callbackUrl  = searchParams.get("callbackUrl") ?? "/";
+  const clubParam    = searchParams.get("club") ?? "";
+  const onboardingHref = clubParam ? `/onboarding?club=${clubParam}` : "/onboarding";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,9 +29,7 @@ function LoginForm() {
 
       if (result?.error) { setError("Invalid email or password. Please try again."); return; }
 
-      // Hard redirect so middleware can inspect the new session and route correctly
-      // Middleware will send incomplete users to /onboarding, complete users to callbackUrl
-      window.location.href = "/onboarding";
+      window.location.href = onboardingHref;
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -38,10 +38,9 @@ function LoginForm() {
   }
 
   async function handleGoogleSignIn() {
-    await signIn("google", { callbackUrl: "/onboarding" });
+    await signIn("google", { callbackUrl: onboardingHref });
   }
 
-  // Suppress unused variable warning — callbackUrl used as fallback if needed
   void callbackUrl;
 
   return (

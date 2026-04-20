@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, FormEvent, useEffect, useRef } from "react";
+import { useState, FormEvent, useEffect, useRef, Suspense } from "react";
 import { signIn } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 type Step = 1 | 2 | 3;
@@ -26,6 +27,14 @@ function StepDots({ step }: { step: Step }) {
 }
 
 export default function RegisterPage() {
+  return <Suspense><RegisterInner /></Suspense>;
+}
+
+function RegisterInner() {
+  const searchParams = useSearchParams();
+  const clubParam    = searchParams.get("club") ?? "";
+  const onboardingHref = clubParam ? `/onboarding?club=${clubParam}` : "/onboarding";
+
   const [step, setStep] = useState<Step>(1);
 
   // Step 1 — Name
@@ -56,7 +65,7 @@ export default function RegisterPage() {
   }, [step]);
 
   async function handleGoogleSignIn() {
-    await signIn("google", { callbackUrl: "/onboarding" });
+    await signIn("google", { callbackUrl: onboardingHref });
   }
 
   function handleStep1() {
@@ -96,7 +105,7 @@ export default function RegisterPage() {
 
       const result = await signIn("credentials", { email, password, redirect: false });
       if (result?.error) { setServerError("Account created! Please sign in."); return; }
-      window.location.href = "/onboarding";
+      window.location.href = onboardingHref;
     } catch {
       setServerError("Network error. Please try again.");
     } finally {

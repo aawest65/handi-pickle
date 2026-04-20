@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import QRCode from "react-qr-code";
 
 interface ClubAdmin {
   id: string;
@@ -39,8 +40,13 @@ const BTN_GHOST   = "px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 te
 export default function ClubDetailPage() {
   const { id }       = useParams<{ id: string }>();
   const { data: session } = useSession();
-  const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
-  const isAdmin      = session?.user?.role === "ADMIN" || isSuperAdmin;
+  const isSuperAdmin    = session?.user?.role === "SUPER_ADMIN";
+  const isAdmin         = session?.user?.role === "ADMIN" || isSuperAdmin;
+  const isClubManager   = !isAdmin && !!session?.user?.isClubAdmin && !!club && (
+    club.primaryAdmin?.id === session?.user?.id ||
+    club.backupAdmin?.id  === session?.user?.id
+  );
+  const canInvite = isAdmin || isClubManager;
 
   const [club, setClub]       = useState<ClubDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -65,6 +71,9 @@ export default function ClubDetailPage() {
   // Member removal
   const [removingId, setRemovingId]     = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<Member | null>(null);
+
+  // Invite link
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -325,6 +334,51 @@ export default function ClubDetailPage() {
           </div>
         )}
       </div>
+
+      {/* ── Invite Players ───────────────────────────────────────────────── */}
+      {canInvite && (
+        <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
+          <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wide mb-1">Invite Players</h2>
+          <p className="text-xs text-slate-500 mb-5">
+            Share this link or QR code. New players will be guided through registration and automatically join this club.
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-6 items-center">
+            {/* QR code */}
+            <div className="flex flex-col items-center gap-2 shrink-0">
+              <div className="bg-white p-3 rounded-xl">
+                <QRCode
+                  value={`${typeof window !== "undefined" ? window.location.origin : "https://www.handipickle.com"}/join/${club.id}`}
+                  size={140}
+                />
+              </div>
+              <span className="text-xs text-slate-500">Scan to join</span>
+            </div>
+
+            {/* Copy link */}
+            <div className="flex-1 w-full">
+              <p className="text-xs text-slate-400 mb-2">Or share this link:</p>
+              <div className="flex gap-2">
+                <input
+                  readOnly
+                  value={`${typeof window !== "undefined" ? window.location.origin : "https://www.handipickle.com"}/join/${club.id}`}
+                  className="flex-1 bg-slate-900 border border-slate-600 text-slate-300 px-3 py-2 rounded-lg text-sm min-w-0"
+                />
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${window.location.origin}/join/${club.id}`);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white text-sm font-semibold rounded-lg transition-colors shrink-0"
+                >
+                  {copied ? "Copied!" : "Copy"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Remove member confirmation */}
       {removeTarget && (

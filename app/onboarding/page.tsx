@@ -67,6 +67,7 @@ function OnboardingInner() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const isEditMode   = searchParams.get("edit") === "1";
+  const inviteClubId = searchParams.get("club") ?? "";
   const { data: session, status, update } = useSession();
 
   const [step, setStep]       = useState<Step>(1);
@@ -92,7 +93,7 @@ function OnboardingInner() {
   // Step 5 — Location + Club
   const [city, setCity]     = useState("");
   const [state, setState]   = useState("");
-  const [clubId, setClubId] = useState("");
+  const [clubId, setClubId] = useState(inviteClubId);
   const [clubs, setClubs]   = useState<{ id: string; name: string }[]>([]);
 
   // Duplicate account warning
