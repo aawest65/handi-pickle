@@ -29,6 +29,8 @@ interface PlayerProfile {
   preferredFormat: string | null;
   showAge: boolean;
   avatarUrl: string | null;
+  clubId: string | null;
+  club: { id: string; name: string } | null;
 }
 
 export default function ProfilePage() {
@@ -42,6 +44,8 @@ export default function ProfilePage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [currentClub, setCurrentClub] = useState<{ id: string; name: string } | null>(null);
+  const [leavingClub, setLeavingClub] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
@@ -56,6 +60,7 @@ export default function ProfilePage() {
         if (d.player) {
           setShowAge(d.player.showAge ?? true);
           setAvatarUrl(d.player.avatarUrl ?? null);
+          setCurrentClub(d.player.club ?? null);
         }
         setLoading(false);
       })
@@ -113,6 +118,17 @@ export default function ProfilePage() {
       setAvatarError("Failed to remove photo.");
     } finally {
       setUploadingAvatar(false);
+    }
+  }
+
+  async function handleLeaveClub() {
+    if (!currentClub) return;
+    setLeavingClub(true);
+    try {
+      const res = await fetch(`/api/clubs/${currentClub.id}/join`, { method: "DELETE" });
+      if (res.ok) setCurrentClub(null);
+    } finally {
+      setLeavingClub(false);
     }
   }
 
@@ -223,6 +239,35 @@ export default function ProfilePage() {
         <Detail label="Years Playing" value={player.yearsPlaying != null ? `${player.yearsPlaying} yr${player.yearsPlaying !== 1 ? "s" : ""}` : "—"} />
         <Detail label="Age (pickleball)" value={String(pickleballAge(player.dateOfBirth))} />
         <Detail label="Gender" value={player.gender} />
+      </div>
+
+      {/* Club */}
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 mb-4">
+        <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Club</h2>
+        {currentClub ? (
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm font-medium text-slate-200">{currentClub.name}</span>
+            <div className="flex items-center gap-3 shrink-0">
+              <Link href="/clubs" className="text-xs text-slate-500 hover:text-slate-300 transition-colors">
+                Change
+              </Link>
+              <button
+                onClick={handleLeaveClub}
+                disabled={leavingClub}
+                className="text-xs text-slate-500 hover:text-red-400 disabled:opacity-50 transition-colors"
+              >
+                {leavingClub ? "Leaving…" : "Leave"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm text-slate-500">No club</span>
+            <Link href="/clubs" className="text-xs text-teal-400 hover:text-teal-300 transition-colors">
+              Browse clubs →
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Privacy settings */}

@@ -1,26 +1,98 @@
-import { prisma } from "@/lib/prisma";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 
-export const dynamic = "force-dynamic";
-
-async function getClubs() {
-  return prisma.club.findMany({
-    where: { status: "ACTIVE" },
-    orderBy: { name: "asc" },
-    select: {
-      id: true,
-      name: true,
-      city: true,
-      state: true,
-      description: true,
-      logoUrl: true,
-      _count: { select: { players: true } },
-    },
-  });
+interface Club {
+  id: string;
+  name: string;
+  city: string | null;
+  state: string | null;
+  description: string | null;
+  logoUrl: string | null;
+  _count: { players: number };
 }
 
-export default async function ClubsPage() {
-  const clubs = await getClubs();
+export default function ClubsPage() {
+  const { data: session, status } = useSession();
+
+  const [clubs, setClubs]           = useState<Club[]>([]);
+  const [currentClubId, setCurrentClubId] = useState<string | null>(null);
+  const [onboarded, setOnboarded]   = useState(false);
+  const [loading, setLoading]       = useState(true);
+  const [acting, setActing]         = useState<string | null>(null); // clubId being joined/left
+
+  useEffect(() => {
+    fetch("/api/clubs")
+      .then((r) => r.json())
+      .then(setClubs)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    fetch("/api/onboarding")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.player?.onboardingComplete) {
+          setOnboarded(true);
+          setCurrentClubId(d.player.clubId ?? null);
+        }
+      })
+      .catch(() => {});
+  }, [status]);
+
+  async function joinClub(clubId: string) {
+    setActing(clubId);
+    try {
+      const res = await fetch(`/api/clubs/${clubId}/join`, { method: "POST" });
+      if (res.ok) {
+        setCurrentClubId(clubId);
+        setClubs((prev) =>
+          prev.map((c) => ({
+            ...c,
+            _count: {
+              players:
+                c.id === clubId
+                  ? c._count.players + 1
+                  : c.id === currentClubId
+                  ? c._count.players - 1
+                  : c._count.players,
+            },
+          }))
+        );
+      }
+    } finally {
+      setActing(null);
+    }
+  }
+
+  async function leaveClub(clubId: string) {
+    setActing(clubId);
+    try {
+      const res = await fetch(`/api/clubs/${clubId}/join`, { method: "DELETE" });
+      if (res.ok) {
+        setCurrentClubId(null);
+        setClubs((prev) =>
+          prev.map((c) =>
+            c.id === clubId ? { ...c, _count: { players: c._count.players - 1 } } : c
+          )
+        );
+      }
+    } finally {
+      setActing(null);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-32">
+        <div className="w-6 h-6 border-2 border-teal-400 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
@@ -52,38 +124,87 @@ export default async function ClubsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {clubs.map((club) => (
-            <div
-              key={club.id}
-              className="bg-slate-800 border border-slate-700 rounded-xl p-5 flex items-start gap-4"
-            >
-              {club.logoUrl ? (
-                <img
-                  src={club.logoUrl}
-                  alt={`${club.name} logo`}
-                  className="w-14 h-14 rounded-lg object-contain bg-slate-700 border border-slate-600 shrink-0"
-                />
-              ) : (
-                <div className="w-14 h-14 rounded-lg bg-slate-700 border border-slate-600 shrink-0 flex items-center justify-center text-slate-500 text-xl font-bold">
-                  {club.name.charAt(0)}
-                </div>
-              )}
-              <div className="min-w-0">
-                <h2 className="font-semibold text-slate-100 truncate">{club.name}</h2>
-                {(club.city || club.state) && (
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    {[club.city, club.state].filter(Boolean).join(", ")}
+          {clubs.map((club) => {
+            const isMember  = currentClubId === club.id;
+            const isActing  = acting === club.id;
+
+            return (
+              <div
+                key={club.id}
+                className={`bg-slate-800 border rounded-xl p-5 flex items-start gap-4 transition-colors ${
+                  isMember ? "border-teal-600" : "border-slate-700"
+                }`}
+              >
+                {/* Logo */}
+                {club.logoUrl ? (
+                  <img
+                    src={club.logoUrl}
+                    alt={`${club.name} logo`}
+                    className="w-14 h-14 rounded-lg object-contain bg-slate-700 border border-slate-600 shrink-0"
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-lg bg-slate-700 border border-slate-600 shrink-0 flex items-center justify-center text-slate-500 text-xl font-bold">
+                    {club.name.charAt(0)}
+                  </div>
+                )}
+
+                {/* Info + action */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <h2 className="font-semibold text-slate-100 truncate">{club.name}</h2>
+                    {isMember && (
+                      <span className="shrink-0 text-xs font-semibold text-teal-400 border border-teal-700 rounded-full px-2 py-0.5">
+                        My Club
+                      </span>
+                    )}
+                  </div>
+                  {(club.city || club.state) && (
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {[club.city, club.state].filter(Boolean).join(", ")}
+                    </p>
+                  )}
+                  {club.description && (
+                    <p className="text-xs text-slate-400 mt-1 line-clamp-2">{club.description}</p>
+                  )}
+                  <p className="text-xs text-slate-500 mt-2">
+                    {club._count.players} member{club._count.players !== 1 ? "s" : ""}
                   </p>
-                )}
-                {club.description && (
-                  <p className="text-xs text-slate-400 mt-1 line-clamp-2">{club.description}</p>
-                )}
-                <p className="text-xs text-slate-500 mt-2">
-                  {club._count.players} member{club._count.players !== 1 ? "s" : ""}
-                </p>
+
+                  {/* Action button — only for onboarded players */}
+                  {onboarded && (
+                    <div className="mt-3">
+                      {isMember ? (
+                        <button
+                          onClick={() => leaveClub(club.id)}
+                          disabled={!!acting}
+                          className="text-xs text-slate-500 hover:text-red-400 disabled:opacity-50 transition-colors"
+                        >
+                          {isActing ? "Leaving…" : "Leave club"}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => joinClub(club.id)}
+                          disabled={!!acting}
+                          className="px-3 py-1.5 bg-teal-700 hover:bg-teal-600 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors"
+                        >
+                          {isActing ? "Joining…" : currentClubId ? "Switch to this club" : "Join"}
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Prompt unauthenticated / not onboarded users */}
+                  {status === "unauthenticated" && (
+                    <p className="mt-3 text-xs text-slate-600">
+                      <Link href={`/join/${club.id}`} className="text-teal-500 hover:text-teal-400">
+                        Sign up to join →
+                      </Link>
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

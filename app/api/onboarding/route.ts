@@ -18,7 +18,9 @@ export async function GET() {
       termsAcceptedAt: true,
       dataShareConsentAt: true,
       emailConsentAt: true,
-      player: true,
+      player: {
+        include: { club: { select: { id: true, name: true } } },
+      },
     },
   });
 
