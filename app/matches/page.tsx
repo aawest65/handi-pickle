@@ -139,7 +139,6 @@ export default function MatchesPage() {
   const [players, setPlayers]             = useState<Player[]>([]);
   const [tournaments, setTournaments]     = useState<Tournament[]>([]);
   const [loading, setLoading]             = useState(false);
-  const [success, setSuccess]             = useState(false);
   const [error, setError]                 = useState<string | null>(null);
 
   const [gameType, setGameType]           = useState("REC");
@@ -239,8 +238,8 @@ export default function MatchesPage() {
         throw new Error(data.error ?? "Failed to record game");
       }
 
-      setSuccess(true);
-      setTimeout(() => router.push("/leaderboard"), 2000);
+      const game = await res.json();
+      router.push(`/rate/${game.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to record game");
     } finally {
@@ -249,16 +248,6 @@ export default function MatchesPage() {
   }
 
   if (status === "loading" || status === "unauthenticated") return null;
-
-  if (success) {
-    return (
-      <div className="max-w-2xl mx-auto py-20 px-4 text-center">
-        <div className="text-6xl mb-6">🎉</div>
-        <h2 className="text-2xl font-bold text-teal-400 mb-2">Game Recorded!</h2>
-        <p className="text-slate-400">Ratings updated. Redirecting to leaderboard...</p>
-      </div>
-    );
-  }
 
   const t1Name = players.find((p) => p.id === team1Player1Id)?.name;
   const t2Name = players.find((p) => p.id === team2Player1Id)?.name;
