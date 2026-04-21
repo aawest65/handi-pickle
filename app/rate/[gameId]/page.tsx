@@ -51,6 +51,7 @@ export default function RatePage() {
   const [opponents, setOpponents] = useState<Opponent[]>([]);
   const [alreadyRated, setAlreadyRated] = useState<Set<string>>(new Set());
   const [scores, setScores] = useState<Record<string, number>>({});
+  const [gamePending, setGamePending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +63,7 @@ export default function RatePage() {
         if (d.error) { router.replace("/leaderboard"); return; }
         setOpponents(d.opponents);
         setAlreadyRated(new Set(d.alreadyRated));
+        setGamePending(d.gameStatus !== "APPROVED");
       })
       .catch(() => router.replace("/leaderboard"))
       .finally(() => setLoading(false));
@@ -115,9 +117,18 @@ export default function RatePage() {
   return (
     <div className="max-w-md mx-auto py-12 px-4">
       <div className="text-center mb-8">
-        <div className="text-5xl mb-4">🎉</div>
-        <h1 className="text-2xl font-bold text-slate-100 mb-1">Game Recorded!</h1>
-        <p className="text-slate-400 text-sm">How was your opponents&apos; sportsmanship?</p>
+        <div className="text-5xl mb-4">{gamePending ? "⏳" : "🎉"}</div>
+        <h1 className="text-2xl font-bold text-slate-100 mb-1">
+          {gamePending ? "Score Submitted!" : "Game Recorded!"}
+        </h1>
+        {gamePending ? (
+          <div className="mt-2 space-y-1">
+            <p className="text-slate-400 text-sm">Your opponents have 7 days to confirm the score.</p>
+            <p className="text-slate-500 text-xs">Ratings are applied once the game is approved.</p>
+          </div>
+        ) : (
+          <p className="text-slate-400 text-sm">Ratings updated.</p>
+        )}
       </div>
 
       <div className="space-y-4 mb-8">

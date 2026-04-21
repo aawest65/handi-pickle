@@ -32,6 +32,21 @@ interface Game {
   ratingHistory:  { id: string }[];
 }
 
+interface PendingAdminGame {
+  id:           string;
+  gameType:     string;
+  format:       string;
+  date:         string;
+  team1Score:   number;
+  team2Score:   number;
+  status:       string;
+  team1Player1: GamePlayer;
+  team1Player2: GamePlayer | null;
+  team2Player1: GamePlayer;
+  team2Player2: GamePlayer | null;
+  submittedBy:  { name: string | null } | null;
+}
+
 function formatLabel(game: Game) {
   if (game.format === "SINGLES") return "Singles";
   return game.isMixed ? "Mixed" : "Doubles";
@@ -52,6 +67,11 @@ export default function AdminMatchesPage() {
   const [searching, setSearching]   = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<{ id: string; name: string } | null>(null);
 
+  // Pending/disputed review state
+  const [pendingGames, setPendingGames]     = useState<PendingAdminGame[]>([]);
+  const [forceApproving, setForceApproving] = useState<string | null>(null);
+  const [reviewTab, setReviewTab]           = useState<"PENDING" | "FLAGGED" | "DISPUTED">("PENDING");
+
   // Delete confirmation state
   const [deleteTarget, setDeleteTarget] = useState<Game | null>(null);
   const [deleting, setDeleting]         = useState(false);
@@ -62,6 +82,10 @@ export default function AdminMatchesPage() {
   useEffect(() => {
     if (!isSuperAdmin) return;
     loadGames();
+    fetch("/api/matches/pending?all=1")
+      .then((r) => r.json())
+      .then((d) => Array.isArray(d) && setPendingGames(d))
+      .catch(console.error);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSuperAdmin]);
 
@@ -113,6 +137,23 @@ export default function AdminMatchesPage() {
     loadGames();
   }
 
+  async function forceApprove(gameId: string) {
+    setForceApproving(gameId);
+    try {
+      const res = await fetch(`/api/matches/${gameId}/approve`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "force-approve" }),
+      });
+      if (res.ok) {
+        setPendingGames((prev) => prev.filter((g) => g.id !== gameId));
+        loadGames();
+      }
+    } finally {
+      setForceApproving(null);
+    }
+  }
+
   async function confirmDelete() {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -151,6 +192,59 @@ export default function AdminMatchesPage() {
         <Link href="/admin" className="text-slate-400 hover:text-slate-200 text-sm">← Admin</Link>
         <h1 className="text-2xl font-bold text-slate-100">Match Management</h1>
       </div>
+
+      {/* Pending / Flagged / Disputed review */}
+      {pendingGames.length > 0 && (() => {
+        const tabs = ["PENDING", "FLAGGED", "DISPUTED"] as const;
+        const filtered = pendingGames.filter((g) => g.status === reviewTab);
+        const counts = Object.fromEntries(tabs.map((t) => [t, pendingGames.filter((g) => g.status === t).length]));
+        return (
+          <div className="mb-8 bg-amber-900/10 border border-amber-700/40 rounded-xl overflow-hidden">
+            <div className="flex border-b border-amber-700/30">
+              {tabs.map((tab) => counts[tab] > 0 && (
+                <button
+                  key={tab}
+                  onClick={() => setReviewTab(tab)}
+                  className={`px-4 py-2.5 text-xs font-semibold uppercase tracking-wide transition-colors ${
+                    reviewTab === tab
+                      ? "bg-amber-900/30 text-amber-400 border-b-2 border-amber-400"
+                      : "text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  {tab} ({counts[tab]})
+                </button>
+              ))}
+            </div>
+            <div className="divide-y divide-slate-800/50">
+              {filtered.length === 0 ? (
+                <p className="px-5 py-4 text-sm text-slate-500">No {reviewTab.toLowerCase()} games.</p>
+              ) : filtered.map((g) => {
+                const t1 = [g.team1Player1, g.team1Player2].filter(Boolean).map((p) => p!.name).join(" & ");
+                const t2 = [g.team2Player1, g.team2Player2].filter(Boolean).map((p) => p!.name).join(" & ");
+                const dateStr = new Date(g.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+                return (
+                  <div key={g.id} className="flex items-center justify-between px-5 py-4 gap-4">
+                    <div className="min-w-0">
+                      <p className="text-sm text-slate-200 truncate">{t1} <span className="text-slate-500">vs</span> {t2}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {dateStr} · {g.team1Score}–{g.team2Score} · {GAME_TYPE_LABELS[g.gameType] ?? g.gameType}
+                        {g.submittedBy?.name && <> · by {g.submittedBy.name}</>}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => forceApprove(g.id)}
+                      disabled={forceApproving === g.id}
+                      className="shrink-0 px-3 py-1.5 bg-teal-700 hover:bg-teal-600 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors"
+                    >
+                      {forceApproving === g.id ? "Approving…" : "Force Approve"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Player filter */}
       <div className="relative mb-6 max-w-md">

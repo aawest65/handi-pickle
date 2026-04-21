@@ -24,6 +24,7 @@ export async function GET(
       id: true,
       format: true,
       date: true,
+      status: true,
       team1Score: true,
       team2Score: true,
       team1Player1: { select: { id: true, name: true, avatarUrl: true } },
@@ -54,7 +55,7 @@ export async function GET(
   });
   const alreadyRated = new Set(existing.map((r) => r.ratedPlayerId));
 
-  return NextResponse.json({ game, opponents, alreadyRated: [...alreadyRated] });
+  return NextResponse.json({ game, opponents, alreadyRated: [...alreadyRated], gameStatus: game.status });
 }
 
 // POST — submit ratings
@@ -76,6 +77,7 @@ export async function POST(
   const game = await prisma.game.findUnique({
     where: { id: gameId },
     select: {
+      status: true,
       team1Player1Id: true,
       team1Player2Id: true,
       team2Player1Id: true,
@@ -108,6 +110,10 @@ export async function POST(
     }
   }
 
+  // Only apply ratings to player totals when the game is already approved.
+  // For PENDING/FLAGGED games, ratings are stored and applied on approval.
+  const applyNow = game.status === "APPROVED";
+
   await prisma.$transaction(async (tx) => {
     for (const { playerId, score } of ratings) {
       const existing = await tx.sportsmanshipRating.findUnique({
@@ -121,18 +127,22 @@ export async function POST(
           where: { gameId_raterId_ratedPlayerId: { gameId, raterId: pid, ratedPlayerId: playerId } },
           data: { score },
         });
-        await tx.player.update({
-          where: { id: playerId },
-          data: { sportsmanshipSum: { increment: diff } },
-        });
+        if (applyNow) {
+          await tx.player.update({
+            where: { id: playerId },
+            data: { sportsmanshipSum: { increment: diff } },
+          });
+        }
       } else {
         await tx.sportsmanshipRating.create({
           data: { gameId, raterId: pid, ratedPlayerId: playerId, score },
         });
-        await tx.player.update({
-          where: { id: playerId },
-          data: { sportsmanshipSum: { increment: score }, sportsmanshipCount: { increment: 1 } },
-        });
+        if (applyNow) {
+          await tx.player.update({
+            where: { id: playerId },
+            data: { sportsmanshipSum: { increment: score }, sportsmanshipCount: { increment: 1 } },
+          });
+        }
       }
     }
   });

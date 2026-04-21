@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import Link from "next/link";
 
 const GAME_TYPE_LABELS: Record<string, string> = {
   REC:          "Recreational",
@@ -15,6 +16,20 @@ interface Tournament {
   id:   string;
   name: string;
   status: string;
+}
+
+interface PendingGame {
+  id: string;
+  gameType: string;
+  format: string;
+  date: string;
+  team1Score: number;
+  team2Score: number;
+  team1Player1: { id: string; name: string };
+  team1Player2: { id: string; name: string } | null;
+  team2Player1: { id: string; name: string };
+  team2Player2: { id: string; name: string } | null;
+  submittedBy: { name: string | null } | null;
 }
 
 interface Player {
@@ -138,6 +153,7 @@ export default function MatchesPage() {
 
   const [players, setPlayers]             = useState<Player[]>([]);
   const [tournaments, setTournaments]     = useState<Tournament[]>([]);
+  const [pendingGames, setPendingGames]   = useState<PendingGame[]>([]);
   const [loading, setLoading]             = useState(false);
   const [error, setError]                 = useState<string | null>(null);
 
@@ -168,6 +184,14 @@ export default function MatchesPage() {
       .then(setPlayers)
       .catch(console.error);
   }, []);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    fetch("/api/matches/pending")
+      .then((r) => r.json())
+      .then((d) => Array.isArray(d) && setPendingGames(d))
+      .catch(console.error);
+  }, [status]);
 
   useEffect(() => {
     if (!canEnterTournament) return;
@@ -254,6 +278,39 @@ export default function MatchesPage() {
 
   return (
     <div className="max-w-2xl mx-auto py-10 px-4">
+
+      {/* Pending approvals banner */}
+      {pendingGames.length > 0 && (
+        <div className="mb-8 bg-amber-900/20 border border-amber-700/50 rounded-xl p-4">
+          <h2 className="text-sm font-semibold text-amber-400 mb-3 flex items-center gap-2">
+            <span>⚠</span> Scores awaiting your approval ({pendingGames.length})
+          </h2>
+          <div className="space-y-2">
+            {pendingGames.map((g) => {
+              const t1 = [g.team1Player1, g.team1Player2].filter(Boolean).map((p) => p!.name).join(" & ");
+              const t2 = [g.team2Player1, g.team2Player2].filter(Boolean).map((p) => p!.name).join(" & ");
+              const dateStr = new Date(g.date).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+              return (
+                <Link
+                  key={g.id}
+                  href={`/approve/${g.id}`}
+                  className="flex items-center justify-between bg-slate-800 hover:bg-slate-750 border border-slate-700 rounded-lg px-4 py-3 transition-colors group"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm text-slate-200 truncate">{t1} <span className="text-slate-500">vs</span> {t2}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {dateStr} · {g.team1Score}–{g.team2Score}
+                      {g.submittedBy?.name && <> · by {g.submittedBy.name}</>}
+                    </p>
+                  </div>
+                  <span className="text-amber-400 text-sm ml-3 shrink-0 group-hover:translate-x-0.5 transition-transform">Review →</span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-100">Record a Game</h1>
         <p className="text-slate-400 mt-1">Submit results to update player ratings automatically.</p>

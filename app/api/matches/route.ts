@@ -146,19 +146,29 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const resolvedMaxScore = maxScore ?? 11;
+    const losingScore = Math.min(team1Score, team2Score);
+    const isSuspicious = losingScore <= 1;
+
+    // Admins and TDs are trusted — auto-approve; regular users go through dispute window
+    const gameStatus = isAdmin ? "APPROVED" : (isSuspicious ? "FLAGGED" : "PENDING");
+    const submittedByUserId = (session.user as { id?: string }).id ?? null;
+
     const game = await prisma.game.create({
       data: {
         gameType,
         format,
-        date:           new Date(date),
-        maxScore:       maxScore ?? 11,
+        date:             new Date(date),
+        maxScore:         resolvedMaxScore,
         team1Score,
         team2Score,
+        status:           gameStatus,
+        submittedByUserId,
         team1Player1Id,
-        team1Player2Id:  team1Player2Id  ?? null,
+        team1Player2Id:   team1Player2Id  ?? null,
         team2Player1Id,
-        team2Player2Id:  team2Player2Id  ?? null,
-        tournamentId:    tournamentId    ?? null,
+        team2Player2Id:   team2Player2Id  ?? null,
+        tournamentId:     tournamentId    ?? null,
       },
       include: {
         team1Player1: true,
@@ -168,9 +178,11 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    await processGame(game.id);
+    if (gameStatus === "APPROVED") {
+      await processGame(game.id);
+    }
 
-    return NextResponse.json(game, { status: 201 });
+    return NextResponse.json({ ...game, gameStatus }, { status: 201 });
   } catch (error) {
     console.error("POST /api/matches error:", error);
     return NextResponse.json({ error: "Failed to record game" }, { status: 500 });

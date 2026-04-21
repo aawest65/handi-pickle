@@ -76,6 +76,7 @@ model User {
   tournamentDirectorFor TournamentDirector[]
   clubRequests          ClubRequest[]
   clubJoinReviews       ClubJoinRequest[]    @relation("ClubJoinReviewer")
+  submittedGames        Game[]               @relation("GameSubmittedBy")
 }
 
 model PasswordResetToken {
@@ -296,15 +297,18 @@ model TournamentRegistration {
 // format:   SINGLES | DOUBLES
 // isMixed:  true when format=DOUBLES and at least one team has players of different genders
 model Game {
-  id             String   @id @default(cuid())
-  gameType       String
-  format         String
-  isMixed        Boolean  @default(false)
-  date           DateTime
-  maxScore       Int      @default(11)
-  team1Score     Int
-  team2Score     Int
-  createdAt      DateTime @default(now())
+  id                String   @id @default(cuid())
+  gameType          String
+  format            String
+  isMixed           Boolean  @default(false)
+  date              DateTime
+  maxScore          Int      @default(11)
+  team1Score        Int
+  team2Score        Int
+  // PENDING | APPROVED | DISPUTED | FLAGGED
+  status            String   @default("PENDING")
+  submittedByUserId String?
+  createdAt         DateTime @default(now())
 
   tournamentId   String?
   team1Player1Id String
@@ -317,6 +321,7 @@ model Game {
   team2Player1  Player      @relation("T2P1", fields: [team2Player1Id], references: [id])
   team2Player2  Player?     @relation("T2P2", fields: [team2Player2Id], references: [id])
   tournament    Tournament? @relation(fields: [tournamentId], references: [id], onDelete: SetNull)
+  submittedBy   User?       @relation("GameSubmittedBy", fields: [submittedByUserId], references: [id], onDelete: SetNull)
 
   ratingHistory        RatingHistory[]
   sportsmanshipRatings SportsmanshipRating[]
