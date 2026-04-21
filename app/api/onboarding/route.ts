@@ -19,7 +19,11 @@ export async function GET() {
       dataShareConsentAt: true,
       emailConsentAt: true,
       player: {
-        include: { club: { select: { id: true, name: true } } },
+        include: {
+          memberships: {
+            select: { isPrimary: true, club: { select: { id: true, name: true } } },
+          },
+        },
       },
     },
   });
@@ -143,10 +147,17 @@ export async function PUT(req: NextRequest) {
       data: {
         city: city?.trim() || null,
         state: state?.trim() || null,
-        clubId: clubId ?? null,
         onboardingComplete: true,
       },
     });
+
+    if (clubId) {
+      await prisma.playerClub.upsert({
+        where: { playerId_clubId: { playerId: player.id, clubId } },
+        create: { playerId: player.id, clubId, isPrimary: true },
+        update: {},
+      });
+    }
 
     return NextResponse.json({ player });
   }

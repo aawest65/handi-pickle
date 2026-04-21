@@ -42,28 +42,40 @@ export async function GET(
       state: true,
       description: true,
       status: true,
+      isPrivate: true,
       primaryAdmin: { select: { id: true, name: true, email: true } },
       backupAdmin:  { select: { id: true, name: true, email: true } },
-      players: {
-        orderBy: { name: "asc" },
+      memberships: {
+        orderBy: { player: { name: "asc" } },
         select: {
-          id: true,
-          name: true,
-          playerNumber: true,
-          currentRating: true,
-          gamesPlayed: true,
-          gender: true,
-          city: true,
-          state: true,
-          dateOfBirth: true,
-          showAge: true,
+          isPrimary: true,
+          player: {
+            select: {
+              id: true,
+              name: true,
+              playerNumber: true,
+              currentRating: true,
+              gamesPlayed: true,
+              gender: true,
+              city: true,
+              state: true,
+              dateOfBirth: true,
+              showAge: true,
+            },
+          },
         },
       },
     },
   });
 
   if (!club) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json(club);
+
+  // Flatten memberships → players for backward-compatible response shape
+  const { memberships, ...rest } = club;
+  return NextResponse.json({
+    ...rest,
+    players: memberships.map(({ isPrimary, player }) => ({ ...player, isPrimary })),
+  });
 }
 
 // PATCH /api/admin/clubs/[id] — update club details and/or admin assignments
@@ -85,6 +97,7 @@ export async function PATCH(
     city?: string;
     state?: string;
     description?: string;
+    isPrivate?: boolean;
     primaryAdminId?: string | null;
     backupAdminId?: string | null;
   };
@@ -116,6 +129,7 @@ export async function PATCH(
         ...(body.city        !== undefined && { city:        body.city?.trim()        || null }),
         ...(body.state       !== undefined && { state:       body.state?.trim()       || null }),
         ...(body.description !== undefined && { description: body.description?.trim() || null }),
+        ...(body.isPrivate   !== undefined && { isPrivate:   body.isPrivate }),
         ...(body.primaryAdminId !== undefined && { primaryAdminId: body.primaryAdminId || null }),
         ...(body.backupAdminId  !== undefined && { backupAdminId:  body.backupAdminId  || null }),
       },

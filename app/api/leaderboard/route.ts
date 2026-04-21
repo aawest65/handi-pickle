@@ -26,10 +26,15 @@ export async function GET(request: NextRequest) {
     const players = await prisma.player.findMany({
       where: {
         ...(gender ? { gender } : {}),
-        ...(clubId ? { clubId } : {}),
+        ...(clubId ? { memberships: { some: { clubId } } } : {}),
         ...formatFilter,
       },
-      include: { club: { select: { id: true, name: true } } },
+      include: {
+        memberships: {
+          where: { isPrimary: true },
+          select: { club: { select: { id: true, name: true } } },
+        },
+      },
       orderBy: { [ratingField]: "desc" },
     });
 
@@ -41,7 +46,7 @@ export async function GET(request: NextRequest) {
       playerAge:    pickleballAge(p.dateOfBirth),
       playerCity:   p.city,
       playerState:  p.state,
-      playerClub:   p.club?.name ?? null,
+      playerClub:   p.memberships[0]?.club?.name ?? null,
       rating:       format === "SINGLES" ? p.singlesRating
                   : format === "DOUBLES" ? p.doublesRating
                   : format === "MIXED"   ? p.mixedRating

@@ -23,6 +23,7 @@ interface Member {
   state: string | null;
   dateOfBirth: string;
   showAge: boolean;
+  isPrimary: boolean;
 }
 
 interface ClubDetail {
@@ -32,6 +33,7 @@ interface ClubDetail {
   state: string | null;
   description: string | null;
   status: string;
+  isPrivate: boolean;
   primaryAdmin: ClubAdmin | null;
   backupAdmin: ClubAdmin | null;
   players: Member[];
@@ -55,7 +57,7 @@ export default function ClubDetailPage() {
   const [clubAdmins, setClubAdmins] = useState<ClubAdmin[]>([]);
 
   // Edit info form
-  const [editForm, setEditForm]   = useState({ name: "", city: "", state: "", description: "" });
+  const [editForm, setEditForm]   = useState({ name: "", city: "", state: "", description: "", isPrivate: false });
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError]   = useState("");
   const [editSuccess, setEditSuccess] = useState(false);
@@ -85,7 +87,7 @@ export default function ClubDetailPage() {
       .then((r) => { if (!r.ok) throw new Error("Forbidden"); return r.json(); })
       .then((d: ClubDetail) => {
         setClub(d);
-        setEditForm({ name: d.name, city: d.city ?? "", state: d.state ?? "", description: d.description ?? "" });
+        setEditForm({ name: d.name, city: d.city ?? "", state: d.state ?? "", description: d.description ?? "", isPrivate: d.isPrivate ?? false });
         setPrimaryId(d.primaryAdmin?.id ?? "");
         setBackupId(d.backupAdmin?.id  ?? "");
       })
@@ -121,6 +123,7 @@ export default function ClubDetailPage() {
           city:        editForm.city,
           state:       editForm.state,
           description: editForm.description,
+          isPrivate:   editForm.isPrivate,
         }),
       });
       const data = await res.json();
@@ -273,6 +276,21 @@ export default function ClubDetailPage() {
               placeholder="Optional description"
             />
           </div>
+          <label className="flex items-center justify-between gap-3 cursor-pointer">
+            <span className="text-sm text-slate-300">
+              Private club
+              <span className="block text-xs text-slate-500 font-normal">Members join by request or invite only</span>
+            </span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={editForm.isPrivate}
+              onClick={() => setEditForm((f) => ({ ...f, isPrivate: !f.isPrivate }))}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${editForm.isPrivate ? "bg-teal-600" : "bg-slate-600"}`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${editForm.isPrivate ? "translate-x-6" : "translate-x-1"}`} />
+            </button>
+          </label>
           {editError && <p className="text-red-400 text-sm">{editError}</p>}
           <div className="flex items-center justify-end gap-3">
             {editSuccess && <span className="text-teal-400 text-sm">✓ Saved</span>}
@@ -352,6 +370,9 @@ export default function ClubDetailPage() {
                         {p.name}
                       </Link>
                       <span className="text-xs text-slate-500">{p.playerNumber}</span>
+                      {p.isPrimary && (
+                        <span className="text-xs text-teal-500 border border-teal-800 rounded-full px-1.5 py-0.5">Home</span>
+                      )}
                     </div>
 
                     {/* Gender · Age · Location */}

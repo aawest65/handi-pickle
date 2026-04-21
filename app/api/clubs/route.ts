@@ -14,7 +14,8 @@ export async function GET() {
         state: true,
         description: true,
         logoUrl: true,
-        _count: { select: { players: true } },
+        isPrivate: true,
+        _count: { select: { memberships: true } },
       },
     });
     return NextResponse.json(clubs);

@@ -126,6 +126,7 @@ model Club {
   state          String?
   description    String?
   logoUrl        String?
+  isPrivate      Boolean  @default(false)
   status         String   @default("ACTIVE") // ACTIVE
   primaryAdminId String?
   backupAdminId  String?
@@ -133,10 +134,22 @@ model Club {
 
   primaryAdmin User?        @relation("ClubPrimaryAdmin", fields: [primaryAdminId], references: [id], onDelete: SetNull)
   backupAdmin  User?        @relation("ClubBackupAdmin",  fields: [backupAdminId],  references: [id], onDelete: SetNull)
-  players      Player[]
+  memberships  PlayerClub[]
   tournaments  Tournament[]
   requests     ClubRequest[]
   joinRequests ClubJoinRequest[]
+}
+
+model PlayerClub {
+  playerId  String
+  clubId    String
+  isPrimary Boolean  @default(false)
+  joinedAt  DateTime @default(now())
+
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  club   Club   @relation(fields: [clubId],   references: [id], onDelete: Cascade)
+
+  @@id([playerId, clubId])
 }
 
 // status: PENDING | APPROVED | REJECTED
@@ -184,7 +197,6 @@ model Player {
   dateOfBirth        DateTime @db.Date
   city               String?
   state              String?
-  clubId             String?
   selfRatedCategory  String   @default("NOVICE")
   initialRating      Float    @default(3.0)
   currentRating      Float    @default(3.0)
@@ -208,9 +220,8 @@ model Player {
   sportsmanshipSum   Float    @default(0)
   sportsmanshipCount Int      @default(0)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  club Club? @relation(fields: [clubId], references: [id], onDelete: SetNull)
-
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  memberships PlayerClub[]
   joinRequests ClubJoinRequest[]
 
   team1Player1Games    Game[]                @relation("T1P1")

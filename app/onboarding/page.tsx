@@ -143,7 +143,8 @@ function OnboardingInner() {
           if (p.yearsPlaying !== null && p.yearsPlaying !== undefined) setYearsPlaying(p.yearsPlaying);
           if (p.city)   setCity(p.city);
           if (p.state)  setState(p.state);
-          if (p.clubId) setClubId(p.clubId);
+          const primaryMembership = (p.memberships ?? []).find((m: { isPrimary: boolean }) => m.isPrimary);
+          if (primaryMembership) setClubId(primaryMembership.club.id);
           if (typeof p.showAge === "boolean") setShowAge(p.showAge);
 
           // Resume at correct step

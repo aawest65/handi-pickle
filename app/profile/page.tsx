@@ -29,8 +29,7 @@ interface PlayerProfile {
   preferredFormat: string | null;
   showAge: boolean;
   avatarUrl: string | null;
-  clubId: string | null;
-  club: { id: string; name: string } | null;
+  memberships: { isPrimary: boolean; club: { id: string; name: string } }[];
 }
 
 export default function ProfilePage() {
@@ -44,8 +43,9 @@ export default function ProfilePage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [currentClub, setCurrentClub] = useState<{ id: string; name: string } | null>(null);
-  const [leavingClub, setLeavingClub] = useState(false);
+  const [memberships, setMemberships] = useState<{ isPrimary: boolean; club: { id: string; name: string } }[]>([]);
+  const [leavingClubId, setLeavingClubId] = useState<string | null>(null);
+  const [settingPrimaryId, setSettingPrimaryId] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
@@ -60,7 +60,7 @@ export default function ProfilePage() {
         if (d.player) {
           setShowAge(d.player.showAge ?? true);
           setAvatarUrl(d.player.avatarUrl ?? null);
-          setCurrentClub(d.player.club ?? null);
+          setMemberships(d.player.memberships ?? []);
         }
         setLoading(false);
       })
@@ -121,14 +121,37 @@ export default function ProfilePage() {
     }
   }
 
-  async function handleLeaveClub() {
-    if (!currentClub) return;
-    setLeavingClub(true);
+  async function handleLeaveClub(clubId: string) {
+    setLeavingClubId(clubId);
     try {
-      const res = await fetch(`/api/clubs/${currentClub.id}/join`, { method: "DELETE" });
-      if (res.ok) setCurrentClub(null);
+      const res = await fetch(`/api/clubs/${clubId}/join`, { method: "DELETE" });
+      if (res.ok) {
+        setMemberships((prev) => {
+          const next = prev.filter((m) => m.club.id !== clubId);
+          // If we left the primary, promote the first remaining
+          const hadPrimary = prev.find((m) => m.club.id === clubId)?.isPrimary;
+          if (hadPrimary && next.length > 0) {
+            return next.map((m, i) => i === 0 ? { ...m, isPrimary: true } : m);
+          }
+          return next;
+        });
+      }
     } finally {
-      setLeavingClub(false);
+      setLeavingClubId(null);
+    }
+  }
+
+  async function handleSetPrimary(clubId: string) {
+    setSettingPrimaryId(clubId);
+    try {
+      const res = await fetch(`/api/clubs/${clubId}/join`, { method: "PATCH" });
+      if (res.ok) {
+        setMemberships((prev) =>
+          prev.map((m) => ({ ...m, isPrimary: m.club.id === clubId }))
+        );
+      }
+    } finally {
+      setSettingPrimaryId(null);
     }
   }
 
@@ -241,31 +264,48 @@ export default function ProfilePage() {
         <Detail label="Gender" value={player.gender} />
       </div>
 
-      {/* Club */}
+      {/* Clubs */}
       <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 mb-4">
-        <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Club</h2>
-        {currentClub ? (
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-sm font-medium text-slate-200">{currentClub.name}</span>
-            <div className="flex items-center gap-3 shrink-0">
-              <Link href="/clubs" className="text-xs text-slate-500 hover:text-slate-300 transition-colors">
-                Change
-              </Link>
-              <button
-                onClick={handleLeaveClub}
-                disabled={leavingClub}
-                className="text-xs text-slate-500 hover:text-red-400 disabled:opacity-50 transition-colors"
-              >
-                {leavingClub ? "Leaving…" : "Leave"}
-              </button>
-            </div>
-          </div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            Clubs {memberships.length > 0 && `(${memberships.length})`}
+          </h2>
+          <Link href="/clubs" className="text-xs text-teal-400 hover:text-teal-300 transition-colors">
+            Browse →
+          </Link>
+        </div>
+        {memberships.length === 0 ? (
+          <p className="text-sm text-slate-500">No clubs yet.</p>
         ) : (
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-sm text-slate-500">No club</span>
-            <Link href="/clubs" className="text-xs text-teal-400 hover:text-teal-300 transition-colors">
-              Browse clubs →
-            </Link>
+          <div className="space-y-2">
+            {memberships.map((m) => (
+              <div key={m.club.id} className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-sm font-medium text-slate-200 truncate">{m.club.name}</span>
+                  {m.isPrimary && (
+                    <span className="text-xs text-teal-400 border border-teal-800 rounded-full px-1.5 py-0.5 shrink-0">Home</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  {!m.isPrimary && memberships.length > 1 && (
+                    <button
+                      onClick={() => handleSetPrimary(m.club.id)}
+                      disabled={settingPrimaryId === m.club.id}
+                      className="text-xs text-slate-500 hover:text-teal-400 disabled:opacity-50 transition-colors"
+                    >
+                      {settingPrimaryId === m.club.id ? "…" : "Set home"}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleLeaveClub(m.club.id)}
+                    disabled={leavingClubId === m.club.id}
+                    className="text-xs text-slate-500 hover:text-red-400 disabled:opacity-50 transition-colors"
+                  >
+                    {leavingClubId === m.club.id ? "Leaving…" : "Leave"}
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

@@ -55,18 +55,12 @@ export async function PATCH(
     });
 
     if (action === "approve") {
-      // Set the player's club and dismiss any other pending requests they have
-      await tx.player.update({
-        where: { id: joinRequest.playerId },
-        data: { clubId },
-      });
-      await tx.clubJoinRequest.updateMany({
-        where: {
-          playerId: joinRequest.playerId,
-          status: "PENDING",
-          id: { not: requestId },
-        },
-        data: { status: "REJECTED", reviewedAt: new Date() },
+      // Add to club (as primary if first membership)
+      const existingCount = await tx.playerClub.count({ where: { playerId: joinRequest.playerId } });
+      await tx.playerClub.upsert({
+        where: { playerId_clubId: { playerId: joinRequest.playerId, clubId } },
+        create: { playerId: joinRequest.playerId, clubId, isPrimary: existingCount === 0 },
+        update: {},
       });
     }
   });

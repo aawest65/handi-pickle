@@ -25,11 +25,22 @@ export async function DELETE(
   }
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const player = await prisma.player.findUnique({ where: { id: playerId }, select: { clubId: true } });
-  if (!player || player.clubId !== id) {
-    return NextResponse.json({ error: "Player not in this club" }, { status: 404 });
+  const membership = await prisma.playerClub.findUnique({
+    where: { playerId_clubId: { playerId, clubId: id } },
+  });
+  if (!membership) return NextResponse.json({ error: "Player not in this club" }, { status: 404 });
+
+  await prisma.playerClub.delete({ where: { playerId_clubId: { playerId, clubId: id } } });
+
+  if (membership.isPrimary) {
+    const next = await prisma.playerClub.findFirst({ where: { playerId } });
+    if (next) {
+      await prisma.playerClub.update({
+        where: { playerId_clubId: { playerId, clubId: next.clubId } },
+        data: { isPrimary: true },
+      });
+    }
   }
 
-  await prisma.player.update({ where: { id: playerId }, data: { clubId: null } });
   return NextResponse.json({ success: true });
 }

@@ -21,7 +21,8 @@ export async function GET() {
       status: true,
       primaryAdmin: { select: { id: true, name: true, email: true } },
       backupAdmin:  { select: { id: true, name: true, email: true } },
-      _count: { select: { players: true } },
+      isPrivate: true,
+      _count: { select: { memberships: true } },
     },
   });
 

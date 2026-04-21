@@ -11,14 +11,16 @@ interface Club {
   state: string | null;
   description: string | null;
   logoUrl: string | null;
-  _count: { players: number };
+  isPrivate: boolean;
+  _count: { memberships: number };
 }
 
 export default function ClubsPage() {
   const { data: session, status } = useSession();
 
   const [clubs, setClubs]                   = useState<Club[]>([]);
-  const [currentClubId, setCurrentClubId]   = useState<string | null>(null);
+  const [memberClubIds, setMemberClubIds]   = useState<Set<string>>(new Set());
+  const [primaryClubId, setPrimaryClubId]   = useState<string | null>(null);
   const [pendingClubIds, setPendingClubIds]  = useState<Set<string>>(new Set());
   const [onboarded, setOnboarded]           = useState(false);
   const [playerState, setPlayerState]       = useState<string | null>(null);
@@ -43,22 +45,42 @@ export default function ClubsPage() {
     ]).then(([onboarding, joinReqs]) => {
       if (onboarding.player?.onboardingComplete) {
         setOnboarded(true);
-        setCurrentClubId(onboarding.player.clubId ?? null);
         setPlayerState(onboarding.player.state ?? null);
+        const memberships: { isPrimary: boolean; club: { id: string } }[] =
+          onboarding.player.memberships ?? [];
+        setMemberClubIds(new Set(memberships.map((m) => m.club.id)));
+        const primary = memberships.find((m) => m.isPrimary);
+        setPrimaryClubId(primary?.club.id ?? null);
       }
       if (Array.isArray(joinReqs)) {
         setPendingClubIds(
-          new Set(joinReqs.filter((r: { status: string }) => r.status === "PENDING").map((r: { clubId: string }) => r.clubId))
+          new Set(
+            joinReqs
+              .filter((r: { status: string }) => r.status === "PENDING")
+              .map((r: { clubId: string }) => r.clubId)
+          )
         );
       }
     }).catch(() => {});
   }, [status]);
 
-  async function requestJoin(clubId: string) {
+  async function joinClub(clubId: string, isPrivate: boolean) {
     setActing(clubId);
     try {
       const res = await fetch(`/api/clubs/${clubId}/join`, { method: "POST" });
-      if (res.ok) setPendingClubIds((prev) => new Set([...prev, clubId]));
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.joined) {
+        setMemberClubIds((prev) => new Set([...prev, clubId]));
+        if (memberClubIds.size === 0) setPrimaryClubId(clubId);
+        setClubs((prev) =>
+          prev.map((c) =>
+            c.id === clubId ? { ...c, _count: { memberships: c._count.memberships + 1 } } : c
+          )
+        );
+      } else if (isPrivate) {
+        setPendingClubIds((prev) => new Set([...prev, clubId]));
+      }
     } finally {
       setActing(null);
     }
@@ -69,12 +91,14 @@ export default function ClubsPage() {
     try {
       const res = await fetch(`/api/clubs/${clubId}/join`, { method: "DELETE" });
       if (res.ok) {
-        setCurrentClubId(null);
+        const wasPrimary = primaryClubId === clubId;
+        setMemberClubIds((prev) => { const s = new Set(prev); s.delete(clubId); return s; });
         setClubs((prev) =>
           prev.map((c) =>
-            c.id === clubId ? { ...c, _count: { players: c._count.players - 1 } } : c
+            c.id === clubId ? { ...c, _count: { memberships: c._count.memberships - 1 } } : c
           )
         );
+        if (wasPrimary) setPrimaryClubId(null);
       }
     } finally {
       setActing(null);
@@ -89,7 +113,6 @@ export default function ClubsPage() {
     );
   }
 
-  // Filter by search query
   const q = search.trim().toLowerCase();
   const filtered = q
     ? clubs.filter(
@@ -100,19 +123,22 @@ export default function ClubsPage() {
       )
     : clubs;
 
-  // Split into nearby (same state) and others — only when player has a state and not searching
   const hasLocation = !!playerState && !q;
   const nearby  = hasLocation ? filtered.filter((c) => c.state === playerState) : [];
   const others  = hasLocation ? filtered.filter((c) => c.state !== playerState) : filtered;
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
-      {/* Header */}
       <div className="flex items-start justify-between mb-6 flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold text-slate-100">Clubs</h1>
           <p className="text-slate-400 mt-1">
             {clubs.length} registered club{clubs.length !== 1 ? "s" : ""}
+            {memberClubIds.size > 0 && (
+              <span className="ml-2 text-teal-400 text-sm">
+                · Member of {memberClubIds.size}
+              </span>
+            )}
           </p>
         </div>
         <Link
@@ -123,7 +149,6 @@ export default function ClubsPage() {
         </Link>
       </div>
 
-      {/* Search */}
       {clubs.length > 0 && (
         <div className="relative mb-6">
           <input
@@ -151,10 +176,7 @@ export default function ClubsPage() {
         <div className="text-center py-20 border border-slate-700 rounded-xl">
           <p className="text-lg font-medium text-slate-300 mb-2">No clubs yet</p>
           <p className="text-slate-500 text-sm mb-6">Be the first to establish a club.</p>
-          <Link
-            href="/clubs/request"
-            className="px-5 py-2.5 bg-teal-600 hover:bg-teal-500 text-white text-sm font-semibold rounded-lg transition-colors"
-          >
+          <Link href="/clubs/request" className="px-5 py-2.5 bg-teal-600 hover:bg-teal-500 text-white text-sm font-semibold rounded-lg transition-colors">
             Request a Club
           </Link>
         </div>
@@ -165,38 +187,29 @@ export default function ClubsPage() {
         </div>
       ) : (
         <div className="space-y-8">
-
-          {/* ── Nearby clubs (same state) ── */}
           {hasLocation && nearby.length > 0 && (
             <section>
-              <p className="text-xs font-semibold text-teal-500 uppercase tracking-widest mb-3">
-                In {playerState}
-              </p>
+              <p className="text-xs font-semibold text-teal-500 uppercase tracking-widest mb-3">In {playerState}</p>
               <ClubGrid
                 clubs={nearby}
-                currentClubId={currentClubId}
+                memberClubIds={memberClubIds}
+                primaryClubId={primaryClubId}
                 pendingClubIds={pendingClubIds}
                 onboarded={onboarded}
                 acting={acting}
                 status={status}
-                onJoin={requestJoin}
+                onJoin={joinClub}
                 onLeave={leaveClub}
               />
             </section>
           )}
 
-          {/* ── Other clubs ── */}
           {hasLocation && others.length > 0 && (
             <section>
               <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
-                  Other States
-                </p>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest">Other States</p>
                 {!showAll && (
-                  <button
-                    onClick={() => setShowAll(true)}
-                    className="text-xs text-teal-500 hover:text-teal-400 transition-colors"
-                  >
+                  <button onClick={() => setShowAll(true)} className="text-xs text-teal-500 hover:text-teal-400 transition-colors">
                     Show all ({others.length})
                   </button>
                 )}
@@ -204,40 +217,34 @@ export default function ClubsPage() {
               {showAll ? (
                 <ClubGrid
                   clubs={others}
-                  currentClubId={currentClubId}
+                  memberClubIds={memberClubIds}
+                  primaryClubId={primaryClubId}
                   pendingClubIds={pendingClubIds}
                   onboarded={onboarded}
                   acting={acting}
                   status={status}
-                  onJoin={requestJoin}
+                  onJoin={joinClub}
                   onLeave={leaveClub}
                 />
               ) : (
                 <div className="border border-slate-700 rounded-xl px-5 py-4 text-center">
-                  <p className="text-sm text-slate-500">
-                    {others.length} club{others.length !== 1 ? "s" : ""} in other states
-                  </p>
-                  <button
-                    onClick={() => setShowAll(true)}
-                    className="mt-1 text-sm text-teal-500 hover:text-teal-400 transition-colors"
-                  >
-                    Show all →
-                  </button>
+                  <p className="text-sm text-slate-500">{others.length} club{others.length !== 1 ? "s" : ""} in other states</p>
+                  <button onClick={() => setShowAll(true)} className="mt-1 text-sm text-teal-500 hover:text-teal-400 transition-colors">Show all →</button>
                 </div>
               )}
             </section>
           )}
 
-          {/* ── No location set — show everything flat ── */}
           {!hasLocation && (
             <ClubGrid
               clubs={filtered}
-              currentClubId={currentClubId}
+              memberClubIds={memberClubIds}
+              primaryClubId={primaryClubId}
               pendingClubIds={pendingClubIds}
               onboarded={onboarded}
               acting={acting}
               status={status}
-              onJoin={requestJoin}
+              onJoin={joinClub}
               onLeave={leaveClub}
             />
           )}
@@ -247,24 +254,24 @@ export default function ClubsPage() {
   );
 }
 
-// ── Reusable club card grid ──────────────────────────────────────────────────
-
 function ClubGrid({
-  clubs, currentClubId, pendingClubIds, onboarded, acting, status, onJoin, onLeave,
+  clubs, memberClubIds, primaryClubId, pendingClubIds, onboarded, acting, status, onJoin, onLeave,
 }: {
   clubs: Club[];
-  currentClubId: string | null;
+  memberClubIds: Set<string>;
+  primaryClubId: string | null;
   pendingClubIds: Set<string>;
   onboarded: boolean;
   acting: string | null;
   status: string;
-  onJoin: (id: string) => void;
+  onJoin: (id: string, isPrivate: boolean) => void;
   onLeave: (id: string) => void;
 }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       {clubs.map((club) => {
-        const isMember  = currentClubId === club.id;
+        const isMember  = memberClubIds.has(club.id);
+        const isPrimary = primaryClubId === club.id;
         const isPending = !isMember && pendingClubIds.has(club.id);
         const isActing  = acting === club.id;
 
@@ -275,50 +282,48 @@ function ClubGrid({
               isMember ? "border-teal-600" : "border-slate-700"
             }`}
           >
-            {/* Logo */}
             {club.logoUrl ? (
-              <img
-                src={club.logoUrl}
-                alt={`${club.name} logo`}
-                className="w-14 h-14 rounded-lg object-contain bg-slate-700 border border-slate-600 shrink-0"
-              />
+              <img src={club.logoUrl} alt={`${club.name} logo`} className="w-14 h-14 rounded-lg object-contain bg-slate-700 border border-slate-600 shrink-0" />
             ) : (
               <div className="w-14 h-14 rounded-lg bg-slate-700 border border-slate-600 shrink-0 flex items-center justify-center text-slate-500 text-xl font-bold">
                 {club.name.charAt(0)}
               </div>
             )}
 
-            {/* Info + action */}
             <div className="min-w-0 flex-1">
-              <div className="flex items-start justify-between gap-2">
+              <div className="flex items-start justify-between gap-2 flex-wrap">
                 <h2 className="font-semibold text-slate-100 truncate">{club.name}</h2>
-                {isMember && (
-                  <span className="shrink-0 text-xs font-semibold text-teal-400 border border-teal-700 rounded-full px-2 py-0.5">
-                    My Club
-                  </span>
-                )}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {club.isPrivate && (
+                    <span className="text-xs text-slate-500 border border-slate-600 rounded-full px-2 py-0.5">Private</span>
+                  )}
+                  {isMember && isPrimary && (
+                    <span className="text-xs font-semibold text-teal-400 border border-teal-700 rounded-full px-2 py-0.5">Home</span>
+                  )}
+                  {isMember && !isPrimary && (
+                    <span className="text-xs font-semibold text-slate-400 border border-slate-600 rounded-full px-2 py-0.5">Member</span>
+                  )}
+                </div>
               </div>
               {(club.city || club.state) && (
-                <p className="text-xs text-slate-500 mt-0.5">
-                  {[club.city, club.state].filter(Boolean).join(", ")}
-                </p>
+                <p className="text-xs text-slate-500 mt-0.5">{[club.city, club.state].filter(Boolean).join(", ")}</p>
               )}
               {club.description && (
                 <p className="text-xs text-slate-400 mt-1 line-clamp-2">{club.description}</p>
               )}
               <p className="text-xs text-slate-500 mt-2">
-                {club._count.players} member{club._count.players !== 1 ? "s" : ""}
+                {club._count.memberships} member{club._count.memberships !== 1 ? "s" : ""}
               </p>
 
               {onboarded && (
-                <div className="mt-3">
+                <div className="mt-3 flex items-center gap-3 flex-wrap">
                   {isMember ? (
                     <button
                       onClick={() => onLeave(club.id)}
                       disabled={!!acting}
                       className="text-xs text-slate-500 hover:text-red-400 disabled:opacity-50 transition-colors"
                     >
-                      {isActing ? "Leaving…" : "Leave club"}
+                      {isActing ? "Leaving…" : "Leave"}
                     </button>
                   ) : isPending ? (
                     <span className="inline-flex items-center gap-1 text-xs text-amber-400 font-medium">
@@ -327,11 +332,15 @@ function ClubGrid({
                     </span>
                   ) : (
                     <button
-                      onClick={() => onJoin(club.id)}
+                      onClick={() => onJoin(club.id, club.isPrivate)}
                       disabled={!!acting}
                       className="px-3 py-1.5 bg-teal-700 hover:bg-teal-600 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors"
                     >
-                      {isActing ? "Requesting…" : "Request to Join"}
+                      {isActing
+                        ? "Joining…"
+                        : club.isPrivate
+                        ? "Request to Join"
+                        : "Join"}
                     </button>
                   )}
                 </div>
@@ -339,9 +348,7 @@ function ClubGrid({
 
               {status === "unauthenticated" && (
                 <p className="mt-3 text-xs text-slate-600">
-                  <Link href={`/join/${club.id}`} className="text-teal-500 hover:text-teal-400">
-                    Sign up to join →
-                  </Link>
+                  <Link href={`/join/${club.id}`} className="text-teal-500 hover:text-teal-400">Sign up to join →</Link>
                 </p>
               )}
             </div>

@@ -37,7 +37,7 @@ async function getPlayer(id: string) {
   return prisma.player.findUnique({
     where: { id },
     include: {
-      club: { select: { id: true, name: true } },
+      memberships: { where: { isPrimary: true }, select: { club: { select: { id: true, name: true } } } },
       categoryRatings: true,
       ratingHistory: {
         include: {
@@ -160,7 +160,7 @@ export default async function PlayerProfilePage({
               <h1 className="text-2xl font-bold text-slate-100 leading-tight">{player.name}</h1>
               <p className="text-sm text-slate-400 mt-0.5">
                 Member since {memberYear}
-                {player.club && <span className="ml-2 text-emerald-400">· {player.club.name}</span>}
+                {player.memberships[0]?.club && <span className="ml-2 text-emerald-400">· {player.memberships[0].club.name}</span>}
                 {(player.city || player.state) && (
                   <span className="ml-2">· {[player.city, player.state].filter(Boolean).join(", ")}</span>
                 )}
