@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
@@ -31,7 +31,7 @@ function InputLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function PlayerSelect({
+function PlayerSearch({
   value,
   onChange,
   players,
@@ -44,20 +44,84 @@ function PlayerSelect({
   excluded: string[];
   placeholder?: string;
 }) {
-  const available = players.filter((p) => !excluded.includes(p.id) || p.id === value);
+  const selected = players.find((p) => p.id === value);
+  const [query, setQuery] = useState(selected?.name ?? "");
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setQuery(selected?.name ?? "");
+  }, [selected?.name]);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setQuery(selected?.name ?? "");
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [selected?.name]);
+
+  const available = players.filter(
+    (p) => (!excluded.includes(p.id) || p.id === value) &&
+      p.name.toLowerCase().includes(query.toLowerCase())
+  );
+
+  function handleSelect(p: Player) {
+    onChange(p.id);
+    setQuery(p.name);
+    setOpen(false);
+  }
+
+  function handleClear() {
+    onChange("");
+    setQuery("");
+    setOpen(false);
+  }
+
   return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="w-full bg-slate-900 border border-slate-600 text-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-    >
-      <option value="">{placeholder ?? "-- Select player --"}</option>
-      {available.map((p) => (
-        <option key={p.id} value={p.id}>
-          {p.name} ({p.gender === "MALE" ? "M" : "F"})
-        </option>
-      ))}
-    </select>
+    <div ref={containerRef} className="relative">
+      <div className="relative">
+        <input
+          type="text"
+          value={query}
+          placeholder={placeholder ?? "Search player..."}
+          onChange={(e) => { setQuery(e.target.value); setOpen(true); if (!e.target.value) onChange(""); }}
+          onFocus={() => setOpen(true)}
+          className="w-full bg-slate-900 border border-slate-600 text-slate-200 rounded-lg px-3 py-2.5 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 placeholder-slate-500"
+        />
+        {value && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 text-lg leading-none"
+          >
+            ×
+          </button>
+        )}
+      </div>
+      {open && available.length > 0 && (
+        <ul className="absolute z-50 mt-1 w-full bg-slate-800 border border-slate-600 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+          {available.map((p) => (
+            <li
+              key={p.id}
+              onMouseDown={() => handleSelect(p)}
+              className="px-3 py-2 text-sm text-slate-200 hover:bg-slate-700 cursor-pointer flex justify-between"
+            >
+              <span>{p.name}</span>
+              <span className="text-slate-400 text-xs">{p.gender === "MALE" ? "M" : "F"}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {open && query.length > 0 && available.length === 0 && (
+        <div className="absolute z-50 mt-1 w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-500">
+          No players found
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -289,7 +353,7 @@ export default function MatchesPage() {
             <h2 className="text-base font-semibold text-teal-400">Team 1</h2>
             <div>
               <InputLabel>Player 1 *</InputLabel>
-              <PlayerSelect
+              <PlayerSearch
                 value={team1Player1Id}
                 onChange={setT1P1}
                 players={players}
@@ -299,7 +363,7 @@ export default function MatchesPage() {
             {isDoubles && (
               <div>
                 <InputLabel>Player 2 *</InputLabel>
-                <PlayerSelect
+                <PlayerSearch
                   value={team1Player2Id}
                   onChange={setT1P2}
                   players={players}
@@ -324,7 +388,7 @@ export default function MatchesPage() {
             <h2 className="text-base font-semibold text-slate-300">Team 2</h2>
             <div>
               <InputLabel>Player 1 *</InputLabel>
-              <PlayerSelect
+              <PlayerSearch
                 value={team2Player1Id}
                 onChange={setT2P1}
                 players={players}
@@ -334,7 +398,7 @@ export default function MatchesPage() {
             {isDoubles && (
               <div>
                 <InputLabel>Player 2 *</InputLabel>
-                <PlayerSelect
+                <PlayerSearch
                   value={team2Player2Id}
                   onChange={setT2P2}
                   players={players}
