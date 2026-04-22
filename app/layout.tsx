@@ -8,6 +8,7 @@ import BottomNav from "@/app/components/BottomNav";
 import GuestBanner from "@/app/components/GuestBanner";
 import InstallPrompt from "@/app/components/InstallPrompt";
 import ServiceWorker from "@/app/components/ServiceWorker";
+import PickleballIcon from "@/app/components/PickleballIcon";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -68,7 +69,7 @@ export default function RootLayout({
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex items-center justify-between h-16">
                 <div className="flex items-center gap-2">
-                  <span className="text-2xl">🏓</span>
+                  <PickleballIcon size={32} />
                   <Link
                     href="/"
                     className="text-teal-400 font-bold text-lg tracking-tight hover:text-teal-300 transition-colors"

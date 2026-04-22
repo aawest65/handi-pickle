@@ -1,4 +1,5 @@
 import Link from "next/link";
+import PickleballIcon from "@/app/components/PickleballIcon";
 
 const features = [
   {
@@ -50,7 +51,9 @@ export default function Home() {
           <div className="absolute bottom-10 right-10 w-80 h-80 rounded-full bg-blue-500 blur-3xl" />
         </div>
         <div className="relative max-w-4xl mx-auto text-center">
-          <div className="text-6xl mb-6">🏓</div>
+          <div className="flex justify-center mb-6">
+            <PickleballIcon size={96} />
+          </div>
           <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4 tracking-tight">
             HandiPick
           </h1>
