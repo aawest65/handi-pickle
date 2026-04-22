@@ -66,10 +66,10 @@ export default function Home() {
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <Link
-              href="/leaderboard"
+              href="/profile"
               className="px-6 py-3 bg-teal-500 hover:bg-teal-400 text-white font-semibold rounded-lg transition-colors shadow-lg"
             >
-              View Leaderboard
+              My Profile
             </Link>
             <Link
               href="/matches"
