@@ -14,6 +14,7 @@ export default function NavAuth() {
     const displayName = session.user.name ?? session.user.email ?? "Account";
     const isAdmin              = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN";
     const isTournamentDirector = (session.user as { isTournamentDirector?: boolean })?.isTournamentDirector ?? false;
+    const isClubAdmin          = (session.user as { isClubAdmin?: boolean })?.isClubAdmin ?? false;
     return (
       <div className="flex items-center gap-3">
         {isAdmin && (
@@ -30,6 +31,14 @@ export default function NavAuth() {
             className="px-3 py-1.5 rounded-md text-sm font-medium text-teal-400 hover:text-teal-300 hover:bg-slate-800 transition-colors"
           >
             Tournaments
+          </Link>
+        )}
+        {!isAdmin && isClubAdmin && (
+          <Link
+            href="/admin/clubs"
+            className="px-3 py-1.5 rounded-md text-sm font-medium text-purple-400 hover:text-purple-300 hover:bg-slate-800 transition-colors"
+          >
+            My Clubs
           </Link>
         )}
         <Link

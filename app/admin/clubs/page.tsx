@@ -38,6 +38,8 @@ export default function AdminClubsPage() {
   const { data: session } = useSession();
   const isAdmin      = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN";
   const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
+  const isClubAdmin  = (session?.user as { isClubAdmin?: boolean })?.isClubAdmin ?? false;
+  const canAccess    = isAdmin || isClubAdmin;
 
   const [clubs, setClubs]     = useState<AdminClub[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,8 +82,9 @@ export default function AdminClubsPage() {
   }
 
   useEffect(() => {
-    if (isAdmin) { loadClubs(); loadRequests(); }
-  }, [isAdmin]);
+    if (canAccess) { loadClubs(); }
+    if (isAdmin)   { loadRequests(); }
+  }, [canAccess, isAdmin]);
 
   async function handleReview(id: string, action: "APPROVE" | "REJECT") {
     setReviewingId(id);
@@ -141,11 +144,10 @@ export default function AdminClubsPage() {
     }
   }
 
-  if (!isAdmin) {
+  if (!canAccess) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center">
-        <p className="text-slate-400">Access restricted to admins.</p>
-        <Link href="/admin" className="text-teal-400 hover:underline text-sm mt-4 inline-block">← Back to Admin</Link>
+        <p className="text-slate-400">Access restricted to club admins.</p>
       </div>
     );
   }
@@ -154,16 +156,22 @@ export default function AdminClubsPage() {
     <div className="max-w-4xl mx-auto px-4 py-8">
       <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
-          <Link href="/admin" className="text-slate-400 hover:text-slate-200 text-sm">← Admin</Link>
-          <h1 className="text-2xl font-bold text-slate-100">Club Management</h1>
+          {isAdmin && (
+            <Link href="/admin" className="text-slate-400 hover:text-slate-200 text-sm">← Admin</Link>
+          )}
+          <h1 className="text-2xl font-bold text-slate-100">
+            {isAdmin ? "Club Management" : "My Clubs"}
+          </h1>
         </div>
-        <button onClick={() => { setShowCreate(true); setCreateError(""); }} className={BTN_PRIMARY}>
-          + New Club
-        </button>
+        {isAdmin && (
+          <button onClick={() => { setShowCreate(true); setCreateError(""); }} className={BTN_PRIMARY}>
+            + New Club
+          </button>
+        )}
       </div>
 
-      {/* Pending Requests */}
-      {(requestsLoading || requests.length > 0) && (
+      {/* Pending Requests — admin only */}
+      {isAdmin && (requestsLoading || requests.length > 0) && (
         <div className="mb-8">
           <h2 className="text-lg font-semibold text-slate-200 mb-3 flex items-center gap-2">
             Pending Club Requests
@@ -268,19 +276,21 @@ export default function AdminClubsPage() {
         </div>
       )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
-        {[
-          { label: "Total Clubs",     value: clubs.length },
-          { label: "Total Members",   value: clubs.reduce((s, c) => s + c._count.players, 0) },
-          { label: "Clubs w/ Admin",  value: clubs.filter((c) => c.primaryAdmin).length },
-        ].map((s) => (
-          <div key={s.label} className="bg-slate-900 border border-slate-700 rounded-xl p-4 text-center">
-            <p className="text-2xl font-bold text-teal-400">{s.value}</p>
-            <p className="text-xs text-slate-500 mt-1">{s.label}</p>
-          </div>
-        ))}
-      </div>
+      {/* Stats — admin only */}
+      {isAdmin && (
+        <div className="grid grid-cols-3 gap-4 mb-8">
+          {[
+            { label: "Total Clubs",     value: clubs.length },
+            { label: "Total Members",   value: clubs.reduce((s, c) => s + c._count.players, 0) },
+            { label: "Clubs w/ Admin",  value: clubs.filter((c) => c.primaryAdmin).length },
+          ].map((s) => (
+            <div key={s.label} className="bg-slate-900 border border-slate-700 rounded-xl p-4 text-center">
+              <p className="text-2xl font-bold text-teal-400">{s.value}</p>
+              <p className="text-xs text-slate-500 mt-1">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Club list */}
       {loading ? (
@@ -289,7 +299,7 @@ export default function AdminClubsPage() {
         </div>
       ) : clubs.length === 0 ? (
         <div className="text-center py-16 text-slate-500 border border-slate-700 rounded-xl">
-          No clubs yet. Create one to get started.
+          {isAdmin ? "No clubs yet. Create one to get started." : "You are not assigned as admin of any clubs yet."}
         </div>
       ) : (
         <div className="space-y-3">

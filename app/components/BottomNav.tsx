@@ -57,7 +57,8 @@ const tabs = [
 export default function BottomNav() {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const isAdmin = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN";
+  const isAdmin      = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN";
+  const isClubAdmin  = (session?.user as { isClubAdmin?: boolean })?.isClubAdmin ?? false;
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-900 border-t border-slate-800"
@@ -87,6 +88,19 @@ export default function BottomNav() {
             </Link>
           );
         })}
+        {!isAdmin && isClubAdmin && (
+          <Link
+            href="/admin/clubs"
+            className={`flex flex-col items-center justify-end gap-0.5 pb-1 min-w-[56px] transition-colors ${
+              pathname.startsWith("/admin/clubs") ? "text-purple-400" : "text-slate-500 hover:text-slate-300"
+            }`}
+          >
+            <svg viewBox="0 0 24 24" fill={pathname.startsWith("/admin/clubs") ? "currentColor" : "none"} stroke="currentColor" strokeWidth={pathname.startsWith("/admin/clubs") ? 0 : 1.8} className="w-6 h-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z" />
+            </svg>
+            <span className="text-[10px] font-medium leading-none">My Clubs</span>
+          </Link>
+        )}
         {isAdmin && (
           <Link
             href="/admin"
