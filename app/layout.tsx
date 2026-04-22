@@ -47,7 +47,6 @@ export const metadata: Metadata = {
 const navLinks = [
   { href: "/", label: "Home" },
   { href: "/players", label: "Players" },
-  { href: "/leaderboard", label: "Leaderboard" },
   { href: "/tournaments", label: "Tournaments" },
   { href: "/clubs", label: "Clubs" },
   { href: "/matches", label: "Record Match" },

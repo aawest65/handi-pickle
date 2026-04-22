@@ -9,12 +9,6 @@ const features = [
     icon: "👤",
   },
   {
-    href: "/leaderboard",
-    title: "Leaderboard",
-    description: "See top-ranked players by play type and format.",
-    icon: "🏆",
-  },
-  {
     href: "/tournaments",
     title: "Tournaments",
     description: "View and create pickleball tournaments.",

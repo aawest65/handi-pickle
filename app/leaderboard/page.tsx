@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { useSession } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 
 interface LeaderboardEntry {
   rank:         number;
@@ -58,18 +60,45 @@ const FORMAT_TABS: { value: Format; label: string }[] = [
   { value: "MIXED",   label: "Mixed Doubles" },
 ];
 
-export default function LeaderboardPage() {
-  const [gender, setGender]   = useState<"" | "MALE" | "FEMALE">("");
-  const [format, setFormat]   = useState<Format>("");
-  const [clubId, setClubId]   = useState("");
-  const [clubs, setClubs]     = useState<Club[]>([]);
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState<string | null>(null);
+function LeaderboardInner() {
+  const searchParams = useSearchParams();
+  const { data: session, status } = useSession();
+
+  const [gender, setGender]         = useState<"" | "MALE" | "FEMALE">("");
+  const [format, setFormat]         = useState<Format>("");
+  const [clubId, setClubId]         = useState(searchParams.get("clubId") ?? "");
+  const [clubs, setClubs]           = useState<Club[]>([]);
+  const [entries, setEntries]       = useState<LeaderboardEntry[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState<string | null>(null);
+  const [defaultLoaded, setDefaultLoaded] = useState(false);
 
   useEffect(() => {
     fetch("/api/clubs").then((r) => r.json()).then(setClubs).catch(() => {});
   }, []);
+
+  // Default to the user's primary club if no clubId was in the URL
+  useEffect(() => {
+    if (defaultLoaded) return;
+    if (status === "loading") return;
+    if (searchParams.get("clubId")) { setDefaultLoaded(true); return; }
+    if (status !== "authenticated") { setDefaultLoaded(true); return; }
+
+    fetch("/api/onboarding")
+      .then((r) => r.json())
+      .then((data) => {
+        const memberships: { isPrimary: boolean; club: { id: string } }[] =
+          data.player?.memberships ?? [];
+        const primary = memberships.find((m) => m.isPrimary);
+        const first   = memberships[0];
+        const id = primary?.club.id ?? first?.club.id ?? "";
+        setClubId(id);
+      })
+      .catch(() => {})
+      .finally(() => setDefaultLoaded(true));
+  }, [status, defaultLoaded, searchParams]);
+
+  const currentClub = clubs.find((c) => c.id === clubId);
 
   const fetchLeaderboard = useCallback(async () => {
     setLoading(true);
@@ -89,13 +118,50 @@ export default function LeaderboardPage() {
     }
   }, [gender, format, clubId]);
 
-  useEffect(() => { fetchLeaderboard(); }, [fetchLeaderboard]);
+  useEffect(() => {
+    if (!defaultLoaded) return;
+    fetchLeaderboard();
+  }, [fetchLeaderboard, defaultLoaded]);
 
   return (
     <div className="max-w-4xl mx-auto py-10 px-4">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-slate-100">Leaderboard</h1>
         <p className="text-slate-400 mt-1">Players ranked by rating</p>
+      </div>
+
+      {/* Club scope bar */}
+      <div className="flex items-center gap-3 mb-6 p-3 bg-slate-800/60 border border-slate-700 rounded-xl flex-wrap">
+        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide shrink-0">Showing</span>
+        {clubId && currentClub ? (
+          <>
+            <span className="text-sm font-semibold text-teal-300">{currentClub.name}</span>
+            <button
+              onClick={() => setClubId("")}
+              className="text-xs text-slate-500 hover:text-slate-300 transition-colors underline underline-offset-2"
+            >
+              View all players
+            </button>
+          </>
+        ) : (
+          <>
+            <span className="text-sm font-semibold text-slate-200">All Players</span>
+          </>
+        )}
+        {clubs.length > 0 && (
+          <div className="ml-auto">
+            <select
+              value={clubId}
+              onChange={(e) => setClubId(e.target.value)}
+              className="bg-slate-700 border border-slate-600 text-slate-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500"
+            >
+              <option value="">All Players</option>
+              {clubs.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Format tabs */}
@@ -114,28 +180,6 @@ export default function LeaderboardPage() {
           </button>
         ))}
       </div>
-
-      {/* Club filter */}
-      {clubs.length > 0 && (
-        <div className="flex items-center gap-3 mb-5">
-          <span className="text-xs font-medium text-slate-400 uppercase tracking-wide shrink-0">Club</span>
-          <select
-            value={clubId}
-            onChange={(e) => setClubId(e.target.value)}
-            className="bg-slate-800 border border-slate-700 text-slate-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-          >
-            <option value="">All Clubs</option>
-            {clubs.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-          {clubId && (
-            <button onClick={() => setClubId("")} className="text-xs text-slate-500 hover:text-slate-300 transition-colors">
-              Clear
-            </button>
-          )}
-        </div>
-      )}
 
       {/* Gender filter */}
       <div className="flex items-center gap-3 mb-6">
@@ -186,6 +230,13 @@ export default function LeaderboardPage() {
         <div className="text-center py-20 text-slate-400">
           <div className="text-5xl mb-4">🏆</div>
           <p className="text-lg font-medium text-slate-300">No players yet</p>
+          {clubId && (
+            <p className="text-sm mt-2">
+              <button onClick={() => setClubId("")} className="text-teal-400 hover:underline">
+                View all players instead
+              </button>
+            </p>
+          )}
         </div>
       ) : (
         <div className="rounded-xl border border-slate-700 overflow-hidden">
@@ -239,5 +290,13 @@ export default function LeaderboardPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function LeaderboardPage() {
+  return (
+    <Suspense>
+      <LeaderboardInner />
+    </Suspense>
   );
 }

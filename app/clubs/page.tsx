@@ -311,9 +311,17 @@ function ClubGrid({
               {club.description && (
                 <p className="text-xs text-slate-400 mt-1 line-clamp-2">{club.description}</p>
               )}
-              <p className="text-xs text-slate-500 mt-2">
-                {club._count.memberships} member{club._count.memberships !== 1 ? "s" : ""}
-              </p>
+              <div className="flex items-center justify-between mt-2">
+                <p className="text-xs text-slate-500">
+                  {club._count.memberships} member{club._count.memberships !== 1 ? "s" : ""}
+                </p>
+                <Link
+                  href={`/leaderboard?clubId=${club.id}`}
+                  className="text-xs text-teal-500 hover:text-teal-300 transition-colors font-medium"
+                >
+                  Leaderboard →
+                </Link>
+              </div>
 
               {onboarded && (
                 <div className="mt-3 flex items-center gap-3 flex-wrap">
