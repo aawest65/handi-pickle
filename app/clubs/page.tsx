@@ -327,7 +327,11 @@ function ClubGrid({
                 <div className="mt-3 flex items-center gap-3 flex-wrap">
                   {isMember ? (
                     <button
-                      onClick={() => onLeave(club.id)}
+                      onClick={() => {
+                        if (confirm(`Leave ${club.name}? You'll need to rejoin to record club matches.`)) {
+                          onLeave(club.id);
+                        }
+                      }}
                       disabled={!!acting}
                       className="text-xs text-slate-500 hover:text-red-400 disabled:opacity-50 transition-colors"
                     >
