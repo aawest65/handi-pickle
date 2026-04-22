@@ -35,7 +35,7 @@ const features = [
 ];
 
 const stats = [
-  { label: "Rating Scale", value: "2.0 – 8.0" },
+  { label: "Rating Scale", value: "1.0 – 8.0" },
   { label: "Play Types", value: "3" },
   { label: "Formats", value: "3" },
   { label: "Auto-updated", value: "✓" },
