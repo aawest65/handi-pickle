@@ -21,10 +21,10 @@ const features = [
     icon: "🥇",
   },
   {
-    href: "/leagues",
-    title: "Leagues",
-    description: "Manage ongoing league seasons and standings.",
-    icon: "📋",
+    href: "/clubs",
+    title: "Clubs",
+    description: "Browse and manage clubs, members, and club ratings.",
+    icon: "🏟️",
   },
   {
     href: "/matches",
@@ -61,7 +61,7 @@ export default function Home() {
             Dynamic Elo-based rating system
           </p>
           <p className="text-slate-300 text-lg max-w-2xl mx-auto mb-10">
-            Track player skill levels across tournaments, leagues, and recreational play.
+            Track player skill levels across tournaments, clubs, and recreational play.
             Ratings update automatically after every match using an Elo-based algorithm.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
