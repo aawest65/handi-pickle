@@ -7,10 +7,14 @@ import Link from "next/link";
 
 const GAME_TYPE_LABELS: Record<string, string> = {
   REC:          "Recreational",
-  CLUB:         "Club",
   TOURNEY_REG:  "Tournament — Regular",
   TOURNEY_MEDAL:"Tournament — Medal Round",
 };
+
+interface ClubOption {
+  id:   string;
+  name: string;
+}
 
 interface Tournament {
   id:   string;
@@ -148,8 +152,8 @@ export default function MatchesPage() {
   const canEnterTournament   = role === "ADMIN" || role === "SUPER_ADMIN" || isTournamentDirector;
 
   const GAME_TYPES = canEnterTournament
-    ? (["REC", "CLUB", "TOURNEY_REG", "TOURNEY_MEDAL"] as const)
-    : (["REC", "CLUB"] as const);
+    ? (["REC", "TOURNEY_REG", "TOURNEY_MEDAL"] as const)
+    : (["REC"] as const);
 
   const [players, setPlayers]             = useState<Player[]>([]);
   const [tournaments, setTournaments]     = useState<Tournament[]>([]);
@@ -168,6 +172,8 @@ export default function MatchesPage() {
   const [team1Score, setTeam1Score]       = useState<number | "">(0);
   const [team2Score, setTeam2Score]       = useState<number | "">(0);
   const [tournamentId, setTournamentId]   = useState("");
+  const [clubOptions, setClubOptions]     = useState<ClubOption[]>([]);
+  const [selectedClubId, setSelectedClubId] = useState<string>("");
 
   const isDoubles      = format === "DOUBLES";
   const isTourneyType  = gameType === "TOURNEY_REG" || gameType === "TOURNEY_MEDAL";
@@ -213,6 +219,26 @@ export default function MatchesPage() {
     if (!isTourneyType) setTournamentId("");
   }, [isTourneyType]);
 
+  // Fetch clubs shared by all selected players whenever the player selection changes
+  useEffect(() => {
+    const ids = [team1Player1Id, isDoubles ? team1Player2Id : null, team2Player1Id, isDoubles ? team2Player2Id : null]
+      .filter(Boolean) as string[];
+    const requiredCount = isDoubles ? 4 : 2;
+    if (ids.length < requiredCount) {
+      setClubOptions([]);
+      setSelectedClubId("");
+      return;
+    }
+    fetch(`/api/matches/club-options?players=${ids.join(",")}`)
+      .then(r => r.json())
+      .then((opts: ClubOption[]) => {
+        setClubOptions(opts);
+        // Auto-select the single club if only one option, otherwise reset
+        setSelectedClubId(opts.length === 1 ? opts[0].id : "");
+      })
+      .catch(() => { setClubOptions([]); setSelectedClubId(""); });
+  }, [team1Player1Id, team1Player2Id, team2Player1Id, team2Player2Id, isDoubles]);
+
   const allSelectedIds = [team1Player1Id, team1Player2Id, team2Player1Id, team2Player2Id].filter(Boolean);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -249,6 +275,9 @@ export default function MatchesPage() {
       }
       if (tournamentId) {
         body.tournamentId = tournamentId;
+      }
+      if (selectedClubId) {
+        body.clubId = selectedClubId;
       }
 
       const res = await fetch("/api/matches", {
@@ -322,6 +351,7 @@ export default function MatchesPage() {
           <h2 className="text-lg font-semibold text-slate-200">Game Details</h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {canEnterTournament && (
             <div>
               <InputLabel>Game Type</InputLabel>
               <select
@@ -334,6 +364,7 @@ export default function MatchesPage() {
                 ))}
               </select>
             </div>
+            )}
             <div>
               <InputLabel>Format</InputLabel>
               <select
@@ -346,6 +377,32 @@ export default function MatchesPage() {
               </select>
             </div>
           </div>
+
+          {/* Club selector — appears when all players share at least one club */}
+          {clubOptions.length > 0 && !isTourneyType && (
+            <div>
+              <InputLabel>Club Play</InputLabel>
+              <select
+                value={selectedClubId}
+                onChange={(e) => setSelectedClubId(e.target.value)}
+                className="w-full bg-slate-900 border border-purple-700 text-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="">Recreational (no club)</option>
+                {clubOptions.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+              {selectedClubId ? (
+                <p className="text-xs text-purple-400 mt-1">
+                  This game will count toward <strong>{clubOptions.find(c => c.id === selectedClubId)?.name}</strong> club ratings.
+                </p>
+              ) : (
+                <p className="text-xs text-slate-500 mt-1">
+                  All players share a club — select it above to count this as club play.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Tournament selector — only visible to TDs/admins when a tournament type is selected */}
           {canEnterTournament && isTourneyType && (

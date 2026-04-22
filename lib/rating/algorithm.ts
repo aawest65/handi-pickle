@@ -190,6 +190,8 @@ export async function processGame(gameId: string): Promise<void> {
     },
   });
 
+  const clubId = game.clubId ?? null;
+
   type PlayerRecord = NonNullable<typeof game.team1Player1>;
 
   const team1 = [game.team1Player1, game.team1Player2].filter(Boolean) as PlayerRecord[];
@@ -205,12 +207,13 @@ export async function processGame(gameId: string): Promise<void> {
 
   await prisma.game.update({ where: { id: gameId }, data: { isMixed } });
 
-  // Fetch existing category ratings for all players in this (format, gameCategory).
+  // Fetch existing category ratings for all players in this (format, gameCategory, clubId).
   const existingCatRows = await prisma.playerCategoryRating.findMany({
     where: {
       playerId:     { in: allPlayers.map(p => p.id) },
       format:       ratingFormat,
       gameCategory,
+      clubId,
     },
   });
 
@@ -286,29 +289,30 @@ export async function processGame(gameId: string): Promise<void> {
   for (const { player, result, before, won } of updates) {
     const clampedCatRating = Math.min(8.0, Math.max(1.0, result.newRating));
 
-    // 1. Upsert the category rating track for this (format, gameCategory).
-    await prisma.playerCategoryRating.upsert({
-      where: {
-        playerId_format_gameCategory: {
-          playerId: player.id,
-          format:   ratingFormat,
-          gameCategory,
+    // 1. Find or create the category rating row for (format, gameCategory, clubId).
+    const existingRow = existingCatRows.find(r => r.playerId === player.id);
+    if (existingRow) {
+      await prisma.playerCategoryRating.update({
+        where: { id: existingRow.id },
+        data: {
+          rating:      clampedCatRating,
+          gamesPlayed: { increment: 1 },
+          ...(won && { wins: { increment: 1 } }),
         },
-      },
-      create: {
-        playerId:    player.id,
-        format:      ratingFormat,
-        gameCategory,
-        rating:      clampedCatRating,
-        gamesPlayed: 1,
-        wins:        won ? 1 : 0,
-      },
-      update: {
-        rating:      clampedCatRating,
-        gamesPlayed: { increment: 1 },
-        ...(won && { wins: { increment: 1 } }),
-      },
-    });
+      });
+    } else {
+      await prisma.playerCategoryRating.create({
+        data: {
+          playerId:    player.id,
+          format:      ratingFormat,
+          gameCategory,
+          clubId,
+          rating:      clampedCatRating,
+          gamesPlayed: 1,
+          wins:        won ? 1 : 0,
+        },
+      });
+    }
 
     // 2. Re-fetch all category rows (now includes the just-upserted row) and
     //    compute games-weighted averages for format-level ratings and currentRating.
@@ -338,6 +342,7 @@ export async function processGame(gameId: string): Promise<void> {
       data: {
         playerId:       player.id,
         gameId,
+        clubId,
         ratingFormat,
         ratingBefore:   before,
         ratingAfter:    clampedCatRating,

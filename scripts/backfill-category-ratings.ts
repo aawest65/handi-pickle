@@ -62,28 +62,20 @@ async function main() {
       const last = group.histories.at(-1);
       if (!last) continue;
 
-      await prisma.playerCategoryRating.upsert({
-        where: {
-          playerId_format_gameCategory: {
-            playerId:     player.id,
-            format,
-            gameCategory,
-          },
-        },
-        create: {
-          playerId:    player.id,
-          format,
-          gameCategory,
-          rating:      last.ratingAfter,
-          gamesPlayed: group.histories.length,
-          wins:        group.wins,
-        },
-        update: {
-          rating:      last.ratingAfter,
-          gamesPlayed: group.histories.length,
-          wins:        group.wins,
-        },
+      // clubId is null for all legacy backfill records (no per-club tracking before this feature)
+      const existing = await prisma.playerCategoryRating.findFirst({
+        where: { playerId: player.id, format, gameCategory, clubId: null },
       });
+      if (existing) {
+        await prisma.playerCategoryRating.update({
+          where: { id: existing.id },
+          data: { rating: last.ratingAfter, gamesPlayed: group.histories.length, wins: group.wins },
+        });
+      } else {
+        await prisma.playerCategoryRating.create({
+          data: { playerId: player.id, format, gameCategory, clubId: null, rating: last.ratingAfter, gamesPlayed: group.histories.length, wins: group.wins },
+        });
+      }
     }
 
     if (groups.size > 0) {

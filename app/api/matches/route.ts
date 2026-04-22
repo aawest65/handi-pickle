@@ -3,7 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { processGame } from "@/lib/rating/algorithm";
 
-const VALID_GAME_TYPES  = ["REC", "CLUB", "TOURNEY_REG", "TOURNEY_MEDAL"] as const;
+// CLUB is no longer user-selectable — it is set automatically when clubId is provided
+const VALID_GAME_TYPES   = ["REC", "TOURNEY_REG", "TOURNEY_MEDAL"] as const;
 const TOURNEY_GAME_TYPES = ["TOURNEY_REG", "TOURNEY_MEDAL"] as const;
 const VALID_FORMATS      = ["SINGLES", "DOUBLES"] as const;
 
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const {
-      gameType,
+      gameType: rawGameType,
       format,
       date,
       maxScore,
@@ -69,6 +70,7 @@ export async function POST(request: NextRequest) {
       team1Score,
       team2Score,
       tournamentId,
+      clubId: requestedClubId,
     } = body as {
       gameType:        string;
       format:          string;
@@ -81,10 +83,16 @@ export async function POST(request: NextRequest) {
       team1Score:      number;
       team2Score:      number;
       tournamentId?:   string;
+      clubId?:         string;
     };
 
-    if (!gameType || !VALID_GAME_TYPES.includes(gameType as typeof VALID_GAME_TYPES[number])) {
-      return NextResponse.json({ error: "Invalid gameType" }, { status: 400 });
+    // If a clubId is supplied the game is club play; otherwise use the submitted type
+    const gameType = requestedClubId ? "CLUB" : rawGameType;
+
+    if (!rawGameType || !VALID_GAME_TYPES.includes(rawGameType as typeof VALID_GAME_TYPES[number])) {
+      if (!requestedClubId) {
+        return NextResponse.json({ error: "Invalid gameType" }, { status: 400 });
+      }
     }
     if (!format || !VALID_FORMATS.includes(format as typeof VALID_FORMATS[number])) {
       return NextResponse.json({ error: "Invalid format" }, { status: 400 });
@@ -146,6 +154,28 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Validate that all players are members of the requested club
+    const resolvedClubId = requestedClubId ?? null;
+    if (resolvedClubId) {
+      const playerIds = [team1Player1Id, team1Player2Id, team2Player1Id, team2Player2Id].filter(Boolean) as string[];
+      const memberships = await prisma.playerClub.findMany({
+        where: { clubId: resolvedClubId, playerId: { in: playerIds } },
+        select: { playerId: true },
+      });
+      const memberSet = new Set(memberships.map(m => m.playerId));
+      const nonMembers = playerIds.filter(id => !memberSet.has(id));
+      if (nonMembers.length > 0) {
+        const names = await prisma.player.findMany({
+          where: { id: { in: nonMembers } },
+          select: { name: true },
+        });
+        return NextResponse.json(
+          { error: `Not all players are members of that club: ${names.map(n => n.name).join(", ")}` },
+          { status: 400 }
+        );
+      }
+    }
+
     const resolvedMaxScore = maxScore ?? 11;
     const losingScore = Math.min(team1Score, team2Score);
     const isSuspicious = losingScore <= 1;
@@ -169,6 +199,7 @@ export async function POST(request: NextRequest) {
         team2Player1Id,
         team2Player2Id:   team2Player2Id  ?? null,
         tournamentId:     tournamentId    ?? null,
+        clubId:           resolvedClubId,
       },
       include: {
         team1Player1: true,

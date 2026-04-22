@@ -125,8 +125,9 @@ export async function PATCH(
     const oppScore = onTeam1 ? fullGame.team2Score : fullGame.team1Score;
 
     // Get this player's category rating just before this game (from rebuilt CategoryRating)
-    const myCatRow = await prisma.playerCategoryRating.findUnique({
-      where: { playerId_format_gameCategory: { playerId, format: ratingFormat, gameCategory } },
+    const gameClubId = fullGame.clubId ?? null;
+    const myCatRow = await prisma.playerCategoryRating.findFirst({
+      where: { playerId, format: ratingFormat, gameCategory, clubId: gameClubId },
     });
     const myRatingBefore = myCatRow?.rating ?? rounded;
 
@@ -172,18 +173,24 @@ export async function PATCH(
     const won = myScore > oppScore;
     const clampedCatRating = Math.min(8.0, Math.max(1.0, result.newRating));
 
-    // Upsert CategoryRating for this player
-    await prisma.playerCategoryRating.upsert({
-      where: { playerId_format_gameCategory: { playerId, format: ratingFormat, gameCategory } },
-      create: { playerId, format: ratingFormat, gameCategory, rating: clampedCatRating, gamesPlayed: 1, wins: won ? 1 : 0 },
-      update: { rating: clampedCatRating, gamesPlayed: { increment: 1 }, ...(won && { wins: { increment: 1 } }) },
-    });
+    // Create or update CategoryRating for this player (keyed by id now, not unique composite)
+    if (myCatRow) {
+      await prisma.playerCategoryRating.update({
+        where: { id: myCatRow.id },
+        data: { rating: clampedCatRating, gamesPlayed: { increment: 1 }, ...(won && { wins: { increment: 1 } }) },
+      });
+    } else {
+      await prisma.playerCategoryRating.create({
+        data: { playerId, format: ratingFormat, gameCategory, clubId: gameClubId, rating: clampedCatRating, gamesPlayed: 1, wins: won ? 1 : 0 },
+      });
+    }
 
     // Rebuild RatingHistory entry for this player for this game
     await prisma.ratingHistory.create({
       data: {
         playerId,
         gameId:         fullGame.id,
+        clubId:         gameClubId,
         ratingFormat,
         ratingBefore:   myRatingBefore,
         ratingAfter:    clampedCatRating,

@@ -94,6 +94,7 @@ model PlayerCategoryRating {
   playerId     String
   format       String   // SINGLES | DOUBLES | MIXED
   gameCategory String   // REC | CLUB | TOURNEY
+  clubId       String?  // null for REC/TOURNEY; club-specific for CLUB games
   rating       Float    @default(3.0)
   gamesPlayed  Int      @default(0)
   wins         Int      @default(0)
@@ -101,8 +102,9 @@ model PlayerCategoryRating {
   updatedAt    DateTime @updatedAt
 
   player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  club   Club?  @relation("ClubCategoryRatings", fields: [clubId], references: [id], onDelete: Cascade)
 
-  @@unique([playerId, format, gameCategory])
+  @@index([playerId, format, gameCategory, clubId])
 }
 
 model SportsmanshipRating {
@@ -133,12 +135,15 @@ model Club {
   backupAdminId  String?
   createdAt      DateTime @default(now())
 
-  primaryAdmin User?        @relation("ClubPrimaryAdmin", fields: [primaryAdminId], references: [id], onDelete: SetNull)
-  backupAdmin  User?        @relation("ClubBackupAdmin",  fields: [backupAdminId],  references: [id], onDelete: SetNull)
-  memberships  PlayerClub[]
-  tournaments  Tournament[]
-  requests     ClubRequest[]
-  joinRequests ClubJoinRequest[]
+  primaryAdmin    User?        @relation("ClubPrimaryAdmin", fields: [primaryAdminId], references: [id], onDelete: SetNull)
+  backupAdmin     User?        @relation("ClubBackupAdmin",  fields: [backupAdminId],  references: [id], onDelete: SetNull)
+  memberships     PlayerClub[]
+  tournaments     Tournament[]
+  requests        ClubRequest[]
+  joinRequests    ClubJoinRequest[]
+  games           Game[]                 @relation("ClubGames")
+  categoryRatings PlayerCategoryRating[] @relation("ClubCategoryRatings")
+  ratingHistory   RatingHistory[]        @relation("ClubRatingHistory")
 }
 
 model PlayerClub {
@@ -296,6 +301,7 @@ model TournamentRegistration {
 // gameType: REC | CLUB | TOURNEY_REG | TOURNEY_MEDAL
 // format:   SINGLES | DOUBLES
 // isMixed:  true when format=DOUBLES and at least one team has players of different genders
+// clubId:   set when gameType=CLUB; identifies which club the game counts toward
 model Game {
   id                String   @id @default(cuid())
   gameType          String
@@ -311,6 +317,7 @@ model Game {
   createdAt         DateTime @default(now())
 
   tournamentId   String?
+  clubId         String?
   team1Player1Id String
   team1Player2Id String?
   team2Player1Id String
@@ -321,6 +328,7 @@ model Game {
   team2Player1  Player      @relation("T2P1", fields: [team2Player1Id], references: [id])
   team2Player2  Player?     @relation("T2P2", fields: [team2Player2Id], references: [id])
   tournament    Tournament? @relation(fields: [tournamentId], references: [id], onDelete: SetNull)
+  club          Club?       @relation("ClubGames", fields: [clubId], references: [id], onDelete: SetNull)
   submittedBy   User?       @relation("GameSubmittedBy", fields: [submittedByUserId], references: [id], onDelete: SetNull)
 
   ratingHistory        RatingHistory[]
@@ -331,6 +339,7 @@ model RatingHistory {
   id             String   @id @default(cuid())
   playerId       String
   gameId         String
+  clubId         String?  // set when the game was club play
   ratingBefore   Float
   ratingAfter    Float
   delta          Float
@@ -344,4 +353,5 @@ model RatingHistory {
 
   player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
   game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  club   Club?  @relation("ClubRatingHistory", fields: [clubId], references: [id], onDelete: SetNull)
 }

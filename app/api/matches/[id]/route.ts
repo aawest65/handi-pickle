@@ -32,36 +32,22 @@ export async function DELETE(
       const won = entry.winLossFactor > 0;
 
       // Step back the category rating to ratingBefore; decrement gamesPlayed/wins.
-      const catRow = await prisma.playerCategoryRating.findUnique({
+      const clubId = (entry as { clubId?: string | null }).clubId ?? null;
+      const catRow = await prisma.playerCategoryRating.findFirst({
         where: {
-          playerId_format_gameCategory: {
-            playerId:     entry.playerId,
-            format:       ratingFormat,
-            gameCategory,
-          },
+          playerId:     entry.playerId,
+          format:       ratingFormat,
+          gameCategory,
+          clubId,
         },
       });
 
       if (catRow) {
         if (catRow.gamesPlayed <= 1) {
-          await prisma.playerCategoryRating.delete({
-            where: {
-              playerId_format_gameCategory: {
-                playerId:     entry.playerId,
-                format:       ratingFormat,
-                gameCategory,
-              },
-            },
-          });
+          await prisma.playerCategoryRating.delete({ where: { id: catRow.id } });
         } else {
           await prisma.playerCategoryRating.update({
-            where: {
-              playerId_format_gameCategory: {
-                playerId:     entry.playerId,
-                format:       ratingFormat,
-                gameCategory,
-              },
-            },
+            where: { id: catRow.id },
             data: {
               rating:      entry.ratingBefore,
               gamesPlayed: { decrement: 1 },
