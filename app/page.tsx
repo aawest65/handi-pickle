@@ -37,8 +37,8 @@ const features = [
 const stats = [
   { label: "Rating Scale", value: "2.0 – 8.0" },
   { label: "Play Types", value: "3" },
-  { label: "Formats", value: "5" },
-  { label: "Algorithm", value: "Elo-based" },
+  { label: "Formats", value: "3" },
+  { label: "Auto-updated", value: "✓" },
 ];
 
 export default function Home() {
@@ -58,11 +58,11 @@ export default function Home() {
             HandiPick
           </h1>
           <p className="text-xl text-teal-300 font-medium mb-4">
-            Dynamic Elo-based rating system
+            Your pickleball handicap system
           </p>
           <p className="text-slate-300 text-lg max-w-2xl mx-auto mb-10">
             Track player skill levels across tournaments, clubs, and recreational play.
-            Ratings update automatically after every match using an Elo-based algorithm.
+            Ratings update automatically after every match.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <Link
@@ -115,33 +115,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* What is Elo? */}
-      <section className="bg-slate-950 border-t border-slate-800 py-16 px-4">
-        <div className="max-w-3xl mx-auto">
-          <h2 className="text-2xl font-bold text-slate-200 mb-2 text-center">What is an Elo rating?</h2>
-          <p className="text-slate-500 text-sm text-center mb-8">For the uninitiated</p>
-          <div className="bg-slate-900 border border-slate-700 rounded-xl p-8 space-y-4 text-slate-300 text-sm leading-relaxed">
-            <p>
-              <span className="text-teal-400 font-semibold">The Origin</span> — The Elo system was invented by a
-              chess player and physicist named Arpad Elo to rank chess players. It&apos;s now used far beyond chess
-              — sports, video games, dating apps, even employee performance systems.
-            </p>
-            <p>
-              <span className="text-teal-400 font-semibold">The Idea</span> — Your rating is a number that
-              represents your skill level relative to everyone else. When you beat someone rated higher than you,
-              your rating goes up a lot. Beat someone rated lower, and it goes up a little. Lose to a stronger
-              player and you barely drop. Lose to a weaker one and you drop more.
-            </p>
-            <p>
-              <span className="text-teal-400 font-semibold">Why it works</span> — The system is self-correcting.
-              A new player who is actually very skilled will rise quickly by beating higher-rated opponents. A
-              player who got lucky early will settle back down over time. The more matches you play, the more
-              accurate your rating becomes.
-            </p>
-          </div>
-        </div>
-      </section>
-
       {/* How it works */}
       <section className="bg-slate-900 border-t border-slate-800 py-16 px-4">
         <div className="max-w-4xl mx-auto">
@@ -153,8 +126,7 @@ export default function Home() {
               </div>
               <h3 className="font-semibold text-slate-200 mb-2">Start</h3>
               <p className="text-slate-400 text-sm">
-                Players begin with an initial rating based on skill category or assessment
-                by an administrator.
+                Players begin with a rating based on their self-assessed skill level, refined by an administrator.
               </p>
             </div>
             <div className="text-center">
@@ -163,7 +135,7 @@ export default function Home() {
               </div>
               <h3 className="font-semibold text-slate-200 mb-2">Play Matches</h3>
               <p className="text-slate-400 text-sm">
-                Record match results for singles or doubles in type of play categories.
+                Record results for singles, doubles, or mixed — in rec, club, or tournament play.
               </p>
             </div>
             <div className="text-center">
@@ -172,8 +144,7 @@ export default function Home() {
               </div>
               <h3 className="font-semibold text-slate-200 mb-2">Ratings Update</h3>
               <p className="text-slate-400 text-sm">
-                Ratings adjust when scores are finalized. Reliability % grows as you play
-                more games.
+                Ratings adjust automatically when scores are approved. The more you play, the more accurate your rating becomes.
               </p>
             </div>
           </div>
