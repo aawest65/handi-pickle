@@ -28,6 +28,7 @@ interface PlayerProfile {
   yearsPlaying: number | null;
   preferredFormat: string | null;
   showAge: boolean;
+  emailDigestOptOut: boolean;
   avatarUrl: string | null;
   memberships: { isPrimary: boolean; club: { id: string; name: string } }[];
 }
@@ -39,6 +40,8 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [showAge, setShowAge] = useState(true);
   const [savingAge, setSavingAge] = useState(false);
+  const [emailDigestOptOut, setEmailDigestOptOut] = useState(false);
+  const [savingDigest, setSavingDigest] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState("");
@@ -59,6 +62,7 @@ export default function ProfilePage() {
         setPlayer(d.player ?? null);
         if (d.player) {
           setShowAge(d.player.showAge ?? true);
+          setEmailDigestOptOut(d.player.emailDigestOptOut ?? false);
           setAvatarUrl(d.player.avatarUrl ?? null);
           setMemberships(d.player.memberships ?? []);
         }
@@ -310,31 +314,58 @@ export default function ProfilePage() {
         )}
       </div>
 
-      {/* Privacy settings */}
+      {/* Privacy & notifications settings */}
       <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 mb-4">
-        <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Privacy</h2>
-        <label className="flex items-center justify-between gap-3 cursor-pointer group">
-          <span className="text-sm text-slate-300">Show my age on public profile</span>
-          <button
-            role="switch"
-            aria-checked={showAge}
-            disabled={savingAge}
-            onClick={async () => {
-              const next = !showAge;
-              setSavingAge(true);
-              setShowAge(next);
-              await fetch("/api/profile/settings", {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ showAge: next }),
-              });
-              setSavingAge(false);
-            }}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none disabled:opacity-50 ${showAge ? "bg-teal-600" : "bg-slate-600"}`}
-          >
-            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showAge ? "translate-x-6" : "translate-x-1"}`} />
-          </button>
-        </label>
+        <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Privacy &amp; Notifications</h2>
+        <div className="space-y-4">
+          <label className="flex items-center justify-between gap-3 cursor-pointer group">
+            <span className="text-sm text-slate-300">Show my age on public profile</span>
+            <button
+              role="switch"
+              aria-checked={showAge}
+              disabled={savingAge}
+              onClick={async () => {
+                const next = !showAge;
+                setSavingAge(true);
+                setShowAge(next);
+                await fetch("/api/profile/settings", {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ showAge: next }),
+                });
+                setSavingAge(false);
+              }}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none disabled:opacity-50 ${showAge ? "bg-teal-600" : "bg-slate-600"}`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${showAge ? "translate-x-6" : "translate-x-1"}`} />
+            </button>
+          </label>
+          <label className="flex items-center justify-between gap-3 cursor-pointer group">
+            <div>
+              <span className="text-sm text-slate-300">Weekly club digest</span>
+              <p className="text-xs text-slate-500 mt-0.5">Rating recap &amp; leaderboard every Monday</p>
+            </div>
+            <button
+              role="switch"
+              aria-checked={!emailDigestOptOut}
+              disabled={savingDigest}
+              onClick={async () => {
+                const next = !emailDigestOptOut;
+                setSavingDigest(true);
+                setEmailDigestOptOut(next);
+                await fetch("/api/profile/settings", {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ emailDigestOptOut: next }),
+                });
+                setSavingDigest(false);
+              }}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none disabled:opacity-50 ${!emailDigestOptOut ? "bg-teal-600" : "bg-slate-600"}`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${!emailDigestOptOut ? "translate-x-6" : "translate-x-1"}`} />
+            </button>
+          </label>
+        </div>
       </div>
 
       <Link

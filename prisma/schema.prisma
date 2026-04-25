@@ -223,6 +223,7 @@ model Player {
   avatarUrl          String?
   onboardingComplete Boolean  @default(false)
   showAge            Boolean  @default(true)
+  emailDigestOptOut  Boolean  @default(false)
   sportsmanshipSum   Float    @default(0)
   sportsmanshipCount Int      @default(0)
 

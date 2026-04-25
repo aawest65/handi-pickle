@@ -9,7 +9,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await req.json() as { showAge?: boolean };
+  const body = await req.json() as { showAge?: boolean; emailDigestOptOut?: boolean };
 
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
@@ -21,6 +21,7 @@ export async function PATCH(req: NextRequest) {
 
   const data: Record<string, unknown> = {};
   if (typeof body.showAge === "boolean") data.showAge = body.showAge;
+  if (typeof body.emailDigestOptOut === "boolean") data.emailDigestOptOut = body.emailDigestOptOut;
 
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
@@ -29,7 +30,7 @@ export async function PATCH(req: NextRequest) {
   const player = await prisma.player.update({
     where: { id: user.player.id },
     data,
-    select: { showAge: true },
+    select: { showAge: true, emailDigestOptOut: true },
   });
 
   return NextResponse.json(player);

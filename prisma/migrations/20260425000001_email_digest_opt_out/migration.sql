@@ -1,0 +1,1 @@
+ALTER TABLE "Player" ADD COLUMN "emailDigestOptOut" BOOLEAN NOT NULL DEFAULT false;
