@@ -368,6 +368,15 @@ export default function ProfilePage() {
         </div>
       </div>
 
+      {(session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN" || (session?.user as { isClubAdmin?: boolean })?.isClubAdmin) && (
+        <Link
+          href="/admin/broadcast"
+          className="block w-full text-center py-2.5 rounded-xl border border-purple-700 text-purple-400 hover:bg-slate-800 transition-colors text-sm font-medium mb-3"
+        >
+          Send Club Broadcast
+        </Link>
+      )}
+
       <Link
         href="/onboarding?edit=1"
         className="block w-full text-center py-2.5 rounded-xl border border-slate-600 text-slate-300 hover:bg-slate-800 transition-colors text-sm font-medium"

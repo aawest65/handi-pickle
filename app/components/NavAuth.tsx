@@ -34,12 +34,20 @@ export default function NavAuth() {
           </Link>
         )}
         {!isAdmin && isClubAdmin && (
-          <Link
-            href="/admin/clubs"
-            className="px-3 py-1.5 rounded-md text-sm font-medium text-purple-400 hover:text-purple-300 hover:bg-slate-800 transition-colors"
-          >
-            My Clubs
-          </Link>
+          <>
+            <Link
+              href="/admin/clubs"
+              className="px-3 py-1.5 rounded-md text-sm font-medium text-purple-400 hover:text-purple-300 hover:bg-slate-800 transition-colors"
+            >
+              My Clubs
+            </Link>
+            <Link
+              href="/admin/broadcast"
+              className="px-3 py-1.5 rounded-md text-sm font-medium text-purple-400 hover:text-purple-300 hover:bg-slate-800 transition-colors"
+            >
+              Broadcast
+            </Link>
+          </>
         )}
         <Link
           href="/profile"
