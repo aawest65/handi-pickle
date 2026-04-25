@@ -8,7 +8,10 @@ import { sendAnnouncementEmail } from "@/lib/email";
 export async function POST(req: NextRequest) {
   const session = await auth();
   const role = session?.user?.role;
-  if (!session || (role !== "ADMIN" && role !== "SUPER_ADMIN")) {
+  const isAdmin = role === "ADMIN" || role === "SUPER_ADMIN";
+  const isClubAdmin = session?.user?.isClubAdmin ?? false;
+
+  if (!session || (!isAdmin && !isClubAdmin)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -20,6 +23,21 @@ export async function POST(req: NextRequest) {
   }
   if (audienceType === "club" && !clubId) {
     return NextResponse.json({ error: "clubId is required for club audience" }, { status: 400 });
+  }
+
+  // Club admins can only broadcast to their own clubs
+  if (!isAdmin) {
+    if (audienceType !== "club" || !clubId) {
+      return NextResponse.json({ error: "Club admins must target a specific club" }, { status: 403 });
+    }
+    const userId = session.user?.id;
+    const club = await prisma.club.findFirst({
+      where: { id: clubId, OR: [{ primaryAdminId: userId }, { backupAdminId: userId }] },
+      select: { id: true },
+    });
+    if (!club) {
+      return NextResponse.json({ error: "You are not an admin of this club" }, { status: 403 });
+    }
   }
 
   const where =

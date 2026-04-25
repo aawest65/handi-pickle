@@ -15,6 +15,8 @@ export default function BroadcastPage() {
   const router = useRouter();
 
   const isAdmin = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN";
+  const isClubAdmin = session?.user?.isClubAdmin ?? false;
+  const canBroadcast = isAdmin || isClubAdmin;
 
   const [clubs, setClubs] = useState<Club[]>([]);
   const [audienceType, setAudienceType] = useState<"all" | "club">("all");
@@ -27,17 +29,25 @@ export default function BroadcastPage() {
   const [confirmed, setConfirmed] = useState(false);
 
   useEffect(() => {
-    if (status === "unauthenticated" || (status === "authenticated" && !isAdmin)) {
+    if (status === "unauthenticated" || (status === "authenticated" && !canBroadcast)) {
       router.push("/");
     }
-  }, [status, isAdmin, router]);
+  }, [status, canBroadcast, router]);
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!canBroadcast) return;
     fetch("/api/admin/clubs")
       .then((r) => r.json())
-      .then((d) => setClubs(Array.isArray(d) ? d : []));
-  }, [isAdmin]);
+      .then((d) => {
+        const list = Array.isArray(d) ? d : [];
+        setClubs(list);
+        // Club admins go straight to club mode with their first club pre-selected
+        if (!isAdmin && list.length > 0) {
+          setAudienceType("club");
+          setClubId(list[0].id);
+        }
+      });
+  }, [canBroadcast, isAdmin]);
 
   async function handleSend() {
     if (!subject.trim() || !body.trim()) { setError("Subject and body are required."); return; }
@@ -61,7 +71,7 @@ export default function BroadcastPage() {
     setConfirmed(false);
   }
 
-  if (status === "loading" || !isAdmin) return null;
+  if (status === "loading" || !canBroadcast) return null;
 
   const audienceLabel =
     audienceType === "all"
@@ -82,20 +92,22 @@ export default function BroadcastPage() {
         {/* Audience */}
         <div>
           <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Audience</label>
-          <div className="flex gap-3">
-            <button
-              onClick={() => { setAudienceType("all"); setClubId(""); }}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${audienceType === "all" ? "bg-teal-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}
-            >
-              All players
-            </button>
-            <button
-              onClick={() => setAudienceType("club")}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${audienceType === "club" ? "bg-teal-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}
-            >
-              Specific club
-            </button>
-          </div>
+          {isAdmin && (
+            <div className="flex gap-3 mb-3">
+              <button
+                onClick={() => { setAudienceType("all"); setClubId(""); }}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${audienceType === "all" ? "bg-teal-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}
+              >
+                All players
+              </button>
+              <button
+                onClick={() => setAudienceType("club")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${audienceType === "club" ? "bg-teal-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}
+              >
+                Specific club
+              </button>
+            </div>
+          )}
           {audienceType === "club" && (
             <select
               value={clubId}
