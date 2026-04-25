@@ -342,9 +342,14 @@ export default function AdminPage() {
               </>
             )}
             {isAdmin && (
-              <a href="/admin/clubs" className={BTN_GHOST}>
-                Clubs
-              </a>
+              <>
+                <a href="/admin/clubs" className={BTN_GHOST}>
+                  Clubs
+                </a>
+                <a href="/admin/broadcast" className={BTN_GHOST}>
+                  Broadcast
+                </a>
+              </>
             )}
             {(isAdmin || isTournamentDirector) && (
               <a href="/admin/tournaments" className={BTN_GHOST}>

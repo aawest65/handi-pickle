@@ -31,6 +31,39 @@ export interface ClubDigestPayload {
   playerStats: DigestPlayerStats;
 }
 
+export async function sendAnnouncementEmail(
+  to: string,
+  subject: string,
+  body: string,
+): Promise<void> {
+  const paragraphs = body
+    .split(/\n\n+/)
+    .map((p) => `<p style="color:#94a3b8;font-size:15px;line-height:1.7;margin:0 0 16px;">${p.replace(/\n/g, "<br/>")}</p>`)
+    .join("");
+
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject,
+    html: `
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;background:#0f172a;color:#e2e8f0;border-radius:12px;">
+        <h1 style="color:#2dd4bf;font-size:22px;margin:0 0 4px;">HandiPick</h1>
+        <p style="color:#64748b;font-size:13px;margin:0 0 28px;">Pickleball Player Ratings</p>
+
+        <h2 style="font-size:19px;color:#f1f5f9;margin:0 0 20px;">${subject}</h2>
+
+        ${paragraphs}
+
+        <hr style="border:none;border-top:1px solid #1e293b;margin:28px 0 20px;" />
+        <p style="color:#334155;font-size:12px;margin:0;">
+          You're receiving this from HandiPick.
+          <a href="${BASE_URL}/profile" style="color:#475569;">Manage notifications</a> in your profile.
+        </p>
+      </div>
+    `,
+  });
+}
+
 export async function sendClubDigestEmail(
   to: string,
   playerName: string,
