@@ -36,7 +36,7 @@ export default function BroadcastPage() {
     if (!isAdmin) return;
     fetch("/api/admin/clubs")
       .then((r) => r.json())
-      .then((d) => setClubs(d.clubs ?? []));
+      .then((d) => setClubs(Array.isArray(d) ? d : []));
   }, [isAdmin]);
 
   async function handleSend() {
