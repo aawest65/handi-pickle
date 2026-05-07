@@ -46,6 +46,8 @@ export async function GET(req: NextRequest) {
           gamesPlayed: true,
           selfRatedCategory: true,
           onboardingComplete: true,
+          dateOfBirth: true,
+          gender: true,
         },
       },
     },

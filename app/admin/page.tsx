@@ -18,6 +18,8 @@ interface AdminUser {
     gamesPlayed: number;
     selfRatedCategory: string;
     onboardingComplete: boolean;
+    dateOfBirth: string;
+    gender: string;
   } | null;
 }
 
@@ -89,7 +91,7 @@ export default function AdminPage() {
 
   // Edit user state
   const [editUser, setEditUser] = useState<AdminUser | null>(null);
-  const [editForm, setEditForm] = useState({ name: "", email: "", selfRatedCategory: "", initialRating: "" });
+  const [editForm, setEditForm] = useState({ name: "", email: "", selfRatedCategory: "", initialRating: "", dateOfBirth: "", gender: "" });
   const [editError, setEditError] = useState("");
   const [editLoading, setEditLoading] = useState(false);
 
@@ -251,6 +253,10 @@ export default function AdminPage() {
       email: user.email ?? "",
       selfRatedCategory: user.player?.selfRatedCategory ?? "",
       initialRating: user.player?.initialRating?.toFixed(2) ?? user.player?.currentRating.toFixed(2) ?? "",
+      dateOfBirth: user.player?.dateOfBirth
+        ? new Date(user.player.dateOfBirth).toISOString().split("T")[0]
+        : "",
+      gender: user.player?.gender ?? "",
     });
     setEditError("");
   }
@@ -269,6 +275,8 @@ export default function AdminPage() {
         payload.selfRatedCategory = editForm.selfRatedCategory;
         const r = parseFloat(editForm.initialRating);
         if (!isNaN(r)) payload.initialRating = r;
+        if (editForm.dateOfBirth) payload.dateOfBirth = editForm.dateOfBirth;
+        if (editForm.gender)      payload.gender      = editForm.gender;
       }
       const res = await fetch(`/api/admin/users/${editUser.id}`, {
         method: "PATCH",
@@ -719,6 +727,30 @@ export default function AdminPage() {
               </div>
               {editUser.player && (
                 <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-1">Gender</label>
+                      <select
+                        value={editForm.gender}
+                        onChange={(e) => setEditForm((f) => ({ ...f, gender: e.target.value }))}
+                        className={INPUT}
+                      >
+                        <option value="MALE">Male</option>
+                        <option value="FEMALE">Female</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-1">Date of Birth</label>
+                      <input
+                        type="date"
+                        value={editForm.dateOfBirth}
+                        onChange={(e) => setEditForm((f) => ({ ...f, dateOfBirth: e.target.value }))}
+                        max={new Date().toISOString().split("T")[0]}
+                        min="1924-01-01"
+                        className={INPUT}
+                      />
+                    </div>
+                  </div>
                   <div>
                     <label className="block text-xs font-medium text-slate-400 mb-1">Skill Category</label>
                     <select

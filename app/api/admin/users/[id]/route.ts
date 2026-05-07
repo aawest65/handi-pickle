@@ -19,7 +19,7 @@ export async function PATCH(
   if (denied) return denied;
 
   const { id } = await params;
-  const { name, email, selfRatedCategory, currentRating, isClubAdmin, isTournamentDirector } = await req.json();
+  const { name, email, selfRatedCategory, currentRating, isClubAdmin, isTournamentDirector, dateOfBirth, gender } = await req.json();
 
   // Flag-only update (toggles from the role panel)
   if (isClubAdmin !== undefined || isTournamentDirector !== undefined) {
@@ -58,13 +58,23 @@ export async function PATCH(
   }
 
   // Update player record if one exists
-  if (user.player && (name || selfRatedCategory || currentRating !== undefined)) {
+  if (user.player && (name || selfRatedCategory || currentRating !== undefined || dateOfBirth || gender)) {
     const validCategories = ["BEGINNER", "NOVICE", "NOVICE_PLUS", "INTERMEDIATE", "ADVANCED", "ADVANCED_PLUS", "EXPERT", "EXPERT_PLUS", "PRO"];
     if (selfRatedCategory && !validCategories.includes(selfRatedCategory)) {
       return NextResponse.json({ error: "Invalid category" }, { status: 400 });
     }
     if (currentRating !== undefined && (typeof currentRating !== "number" || currentRating < 1.0 || currentRating > 8.0)) {
       return NextResponse.json({ error: "Rating must be between 1.0 and 8.0" }, { status: 400 });
+    }
+    if (gender && !["MALE", "FEMALE"].includes(gender)) {
+      return NextResponse.json({ error: "Gender must be MALE or FEMALE" }, { status: 400 });
+    }
+    let parsedDob: Date | undefined;
+    if (dateOfBirth) {
+      parsedDob = new Date(dateOfBirth);
+      if (isNaN(parsedDob.getTime()) || parsedDob >= new Date()) {
+        return NextResponse.json({ error: "A valid date of birth is required" }, { status: 400 });
+      }
     }
 
     await prisma.player.update({
@@ -73,6 +83,8 @@ export async function PATCH(
         ...(name              && { name: name.trim() }),
         ...(selfRatedCategory && { selfRatedCategory }),
         ...(currentRating !== undefined && { currentRating }),
+        ...(parsedDob      !== undefined && { dateOfBirth: parsedDob }),
+        ...(gender         && { gender }),
       },
     });
   }
