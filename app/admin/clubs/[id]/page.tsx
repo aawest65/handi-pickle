@@ -73,6 +73,15 @@ export default function ClubDetailPage() {
   const [removingId, setRemovingId]     = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<Member | null>(null);
 
+  // Add player (SUPER_ADMIN only)
+  interface SearchPlayer { id: string; name: string; playerNumber: string; currentRating: number; gender: string }
+  const [playerSearch, setPlayerSearch]     = useState("");
+  const [playerResults, setPlayerResults]   = useState<SearchPlayer[]>([]);
+  const [selectedPlayer, setSelectedPlayer] = useState<SearchPlayer | null>(null);
+  const [adding, setAdding]                 = useState(false);
+  const [addError, setAddError]             = useState("");
+  const [searchLoading, setSearchLoading]   = useState(false);
+
   // Join requests
   interface JoinRequest { id: string; requestedAt: string; player: { id: string; name: string; playerNumber: string; currentRating: number; selfRatedCategory: string; gamesPlayed: number } }
   const [joinRequests, setJoinRequests]   = useState<JoinRequest[]>([]);
@@ -108,6 +117,50 @@ export default function ClubDetailPage() {
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    if (!playerSearch.trim()) { setPlayerResults([]); return; }
+    setSearchLoading(true);
+    const controller = new AbortController();
+    fetch(`/api/admin/players?q=${encodeURIComponent(playerSearch)}&limit=20`, { signal: controller.signal })
+      .then((r) => r.ok ? r.json() : [])
+      .then((players: SearchPlayer[]) => {
+        const memberIds = new Set(club?.players.map((p) => p.id) ?? []);
+        setPlayerResults(players.filter((p) => !memberIds.has(p.id)));
+      })
+      .catch(() => {})
+      .finally(() => setSearchLoading(false));
+    return () => controller.abort();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playerSearch]);
+
+  async function addPlayer() {
+    if (!selectedPlayer) return;
+    setAdding(true);
+    setAddError("");
+    try {
+      const res = await fetch(`/api/admin/clubs/${id}/members`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ playerId: selectedPlayer.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setAddError(data.error ?? "Failed to add player"); return; }
+      // Refresh roster
+      fetch(`/api/admin/clubs/${id}`)
+        .then((r) => r.json())
+        .then((d: ClubDetail) => setClub(d))
+        .catch(() => {});
+      setSelectedPlayer(null);
+      setPlayerSearch("");
+      setPlayerResults([]);
+    } catch {
+      setAddError("Network error");
+    } finally {
+      setAdding(false);
+    }
+  }
 
   async function saveInfo(e: React.FormEvent) {
     e.preventDefault();
@@ -416,6 +469,66 @@ export default function ClubDetailPage() {
           </div>
         )}
       </div>
+
+      {/* ── Add Player (SUPER_ADMIN only) ────────────────────────────────── */}
+      {isSuperAdmin && (
+        <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
+          <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wide mb-1">Add Player</h2>
+          <p className="text-xs text-slate-500 mb-4">Search for a player and add them directly to this club.</p>
+
+          <div className="space-y-3">
+            <div className="relative">
+              <input
+                type="text"
+                value={playerSearch}
+                onChange={(e) => { setPlayerSearch(e.target.value); setSelectedPlayer(null); setAddError(""); }}
+                placeholder="Search by name or player #"
+                className={INPUT}
+              />
+              {searchLoading && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <div className="w-4 h-4 border-2 border-teal-400 border-t-transparent rounded-full animate-spin" />
+                </span>
+              )}
+            </div>
+
+            {playerResults.length > 0 && !selectedPlayer && (
+              <div className="border border-slate-600 rounded-lg divide-y divide-slate-700 max-h-52 overflow-y-auto">
+                {playerResults.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => { setSelectedPlayer(p); setPlayerSearch(p.name); setPlayerResults([]); }}
+                    className="w-full text-left px-3 py-2.5 hover:bg-slate-700 transition-colors"
+                  >
+                    <span className="text-sm text-slate-200 font-medium">{p.name}</span>
+                    <span className="ml-2 text-xs text-slate-500">{p.playerNumber}</span>
+                    <span className="ml-2 text-xs text-teal-400">{p.currentRating.toFixed(2)}</span>
+                    <span className="ml-2 text-xs text-slate-500">{p.gender === "MALE" ? "M" : "F"}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {playerSearch.trim() && !searchLoading && playerResults.length === 0 && !selectedPlayer && (
+              <p className="text-xs text-slate-500 px-1">No players found outside this club.</p>
+            )}
+
+            {addError && <p className="text-red-400 text-sm">{addError}</p>}
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={addPlayer}
+                disabled={!selectedPlayer || adding}
+                className={BTN_PRIMARY}
+              >
+                {adding ? "Adding…" : "Add to Club"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Join Requests ────────────────────────────────────────────────── */}
       {canInvite && (
