@@ -15,6 +15,7 @@ declare module "next-auth" {
       role:                 string;
       isClubAdmin:          boolean;
       isTournamentDirector: boolean;
+      isCoach:              boolean;
     } & import("next-auth").DefaultSession["user"];
   }
 }
@@ -26,6 +27,7 @@ declare module "@auth/core/jwt" {
     role:                 string;
     isClubAdmin:          boolean;
     isTournamentDirector: boolean;
+    isCoach:              boolean;
   }
 }
 

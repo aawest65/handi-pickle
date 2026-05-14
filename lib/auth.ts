@@ -13,6 +13,7 @@ declare module "next-auth" {
       role:                 string;
       isClubAdmin:          boolean;
       isTournamentDirector: boolean;
+      isCoach:              boolean;
     } & DefaultSession["user"];
   }
 }
@@ -24,6 +25,7 @@ declare module "@auth/core/jwt" {
     role:                 string;
     isClubAdmin:          boolean;
     isTournamentDirector: boolean;
+    isCoach:              boolean;
   }
 }
 
@@ -66,12 +68,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             role: true,
             isClubAdmin: true,
             isTournamentDirector: true,
+            isCoach: true,
             player: { select: { id: true, onboardingComplete: true } },
           },
         });
         token.role                 = dbUser?.role                 ?? "USER";
         token.isClubAdmin          = dbUser?.isClubAdmin          ?? false;
         token.isTournamentDirector = dbUser?.isTournamentDirector ?? false;
+        token.isCoach              = dbUser?.isCoach              ?? false;
         token.onboardingComplete   = dbUser?.player?.onboardingComplete ?? false;
         token.playerId             = dbUser?.player?.id ?? null;
       }
@@ -82,6 +86,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       session.user.role                 = (token.role as string)           ?? "USER";
       session.user.isClubAdmin          = (token.isClubAdmin as boolean)   ?? false;
       session.user.isTournamentDirector = (token.isTournamentDirector as boolean) ?? false;
+      session.user.isCoach              = (token.isCoach as boolean)       ?? false;
       session.user.onboardingComplete   = (token.onboardingComplete as boolean)   ?? false;
       session.user.playerId             = (token.playerId as string | null) ?? null;
       return session;

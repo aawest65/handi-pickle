@@ -3,8 +3,10 @@ export const dynamic = 'force-dynamic';
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 import { pickleballAge } from "@/lib/pickleballAge";
 import { calcReliability, RELIABILITY_GAMES_TARGET } from "@/lib/reliability";
+import { MetricsButton } from "./MetricsModal";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -105,8 +107,10 @@ export default async function PlayerProfilePage({
   params: Promise<{ id: string }>;
 }) {
   const { id }  = await params;
-  const player  = await getPlayer(id);
+  const [player, session] = await Promise.all([getPlayer(id), auth()]);
   if (!player) notFound();
+
+  const isAssignedCoach = !!session?.user?.id && player.assignedCoachId === session.user.id;
 
   const age            = pickleballAge(player.dateOfBirth);
   const memberYear     = new Date(player.createdAt).getFullYear();
@@ -216,6 +220,8 @@ export default async function PlayerProfilePage({
                     </>
                   )}
                 </StatBox>
+
+                <MetricsButton playerId={player.id} isAssignedCoach={isAssignedCoach} />
 
               </div>
             </div>

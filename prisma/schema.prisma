@@ -65,6 +65,7 @@ model User {
 
   isClubAdmin          Boolean @default(false)
   isTournamentDirector Boolean @default(false)
+  isCoach              Boolean @default(false)
 
   accounts              Account[]
   sessions              Session[]
@@ -77,6 +78,8 @@ model User {
   clubRequests          ClubRequest[]
   clubJoinReviews       ClubJoinRequest[]    @relation("ClubJoinReviewer")
   submittedGames        Game[]               @relation("GameSubmittedBy")
+  coachedPlayers        Player[]             @relation("PlayerCoach")
+  playerMetrics         PlayerMetrics[]      @relation("MetricsCoach")
 }
 
 model PasswordResetToken {
@@ -227,9 +230,13 @@ model Player {
   sportsmanshipSum   Float    @default(0)
   sportsmanshipCount Int      @default(0)
 
+  assignedCoachId String?
+  assignedCoach   User?   @relation("PlayerCoach", fields: [assignedCoachId], references: [id], onDelete: SetNull)
+
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   memberships PlayerClub[]
   joinRequests ClubJoinRequest[]
+  metrics     PlayerMetrics?
 
   team1Player1Games    Game[]                @relation("T1P1")
   team1Player2Games    Game[]                @relation("T1P2")
@@ -314,6 +321,8 @@ model Game {
   team2Score        Int
   // PENDING | APPROVED | DISPUTED | FLAGGED
   status            String   @default("PENDING")
+  // For TOURNEY_MEDAL games: GOLD | SILVER | BRONZE (silver = lost the gold match)
+  medalColor        String?
   submittedByUserId String?
   createdAt         DateTime @default(now())
 
@@ -355,4 +364,27 @@ model RatingHistory {
   player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
   game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
   club   Club?  @relation("ClubRatingHistory", fields: [clubId], references: [id], onDelete: SetNull)
+}
+
+// Coach-entered skill assessments for a player. All metrics use a 1.0–5.0 scale in 0.5 steps.
+// unforcedErrors: lower is better (1.0 = very few errors, 5.0 = many errors).
+model PlayerMetrics {
+  id             String   @id @default(cuid())
+  playerId       String   @unique
+  coachId        String?
+  updatedAt      DateTime @updatedAt
+
+  serveRating    Float?
+  serveSpeed     Float?
+  returnSkill    Float?
+  defense        Float?
+  offense        Float?
+  lobbing        Float?
+  dinking        Float?
+  drops          Float?
+  speedUps       Float?
+  unforcedErrors Float?
+
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  coach  User?  @relation("MetricsCoach", fields: [coachId], references: [id], onDelete: SetNull)
 }
