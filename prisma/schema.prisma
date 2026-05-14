@@ -80,6 +80,7 @@ model User {
   submittedGames        Game[]               @relation("GameSubmittedBy")
   coachedPlayers        Player[]             @relation("PlayerCoach")
   playerMetrics         PlayerMetrics[]      @relation("MetricsCoach")
+  coachProfile          CoachProfile?
 }
 
 model PasswordResetToken {
@@ -247,6 +248,7 @@ model Player {
   sportsmanshipGiven     SportsmanshipRating[]    @relation("Rater")
   sportsmanshipReceived  SportsmanshipRating[]    @relation("RatedPlayer")
   tournamentRegistrations TournamentRegistration[]
+  coachReviews           CoachReview[]
 }
 
 model Tournament {
@@ -364,6 +366,48 @@ model RatingHistory {
   player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
   game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
   club   Club?  @relation("ClubRatingHistory", fields: [clubId], references: [id], onDelete: SetNull)
+}
+
+// Public-facing coach profile. Created/edited by the coach themselves.
+// certifications: preset slugs e.g. ["PPR","IPTPA_L1"]; otherCerts: free text.
+// specialties: e.g. ["BEGINNER","DOUBLES","MENTAL_GAME"]
+model CoachProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  bio           String?
+  city          String?
+  state         String?
+  yearsCoaching Int?
+  certifications String[]
+  otherCerts    String?
+  specialties   String[]
+  lessonRateMin Int?
+  lessonRateMax Int?
+  groupRate     String?
+  website       String?
+  phone         String?
+  showPhone     Boolean  @default(false)
+  isPublic      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviews CoachReview[]
+}
+
+// One review per assigned player per coach.
+model CoachReview {
+  id              String   @id @default(cuid())
+  coachProfileId  String
+  reviewerPlayerId String
+  rating          Int      // 1–5
+  comment         String?
+  createdAt       DateTime @default(now())
+
+  coachProfile   CoachProfile @relation(fields: [coachProfileId], references: [id], onDelete: Cascade)
+  reviewerPlayer Player       @relation(fields: [reviewerPlayerId], references: [id], onDelete: Cascade)
+
+  @@unique([coachProfileId, reviewerPlayerId])
 }
 
 // Coach-entered skill assessments for a player. All metrics use a 1.0–5.0 scale in 0.5 steps.
