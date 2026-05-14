@@ -15,6 +15,7 @@ export default function NavAuth() {
     const isAdmin              = session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN";
     const isTournamentDirector = (session.user as { isTournamentDirector?: boolean })?.isTournamentDirector ?? false;
     const isClubAdmin          = (session.user as { isClubAdmin?: boolean })?.isClubAdmin ?? false;
+    const isCoach              = (session.user as { isCoach?: boolean })?.isCoach ?? false;
     return (
       <div className="flex items-center gap-3">
         {isAdmin && (
@@ -48,6 +49,14 @@ export default function NavAuth() {
               Broadcast
             </Link>
           </>
+        )}
+        {isCoach && (
+          <Link
+            href="/coaches/me"
+            className="px-3 py-1.5 rounded-md text-sm font-medium text-indigo-400 hover:text-indigo-300 hover:bg-slate-800 transition-colors"
+          >
+            My Coach Profile
+          </Link>
         )}
         <Link
           href="/profile"
