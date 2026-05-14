@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendClubDigestEmail, type ClubDigestPayload } from "@/lib/email";
 
-// POST /api/cron/weekly-digest
+// GET /api/cron/weekly-digest
 // Called by Vercel Cron every Monday at 9am UTC.
-// Authorization: Bearer <CRON_SECRET>
-export async function POST(req: NextRequest) {
+// Vercel automatically adds Authorization: Bearer <CRON_SECRET>
+export async function GET(req: NextRequest) {
   const auth = req.headers.get("authorization");
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
