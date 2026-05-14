@@ -5,7 +5,7 @@ import { PlayersClient } from "./PlayersClient";
 
 async function getPlayers() {
   return prisma.player.findMany({
-    orderBy: { currentRating: "desc" },
+    orderBy: { name: "asc" },
     select: {
       id: true, playerNumber: true, name: true, gender: true, dateOfBirth: true,
       city: true, state: true, selfRatedCategory: true, currentRating: true,
