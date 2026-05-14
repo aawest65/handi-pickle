@@ -37,6 +37,7 @@ export async function GET(req: NextRequest) {
       role: true,
       isClubAdmin: true,
       isTournamentDirector: true,
+      isCoach: true,
       player: {
         select: {
           id: true,
@@ -48,6 +49,8 @@ export async function GET(req: NextRequest) {
           onboardingComplete: true,
           dateOfBirth: true,
           gender: true,
+          assignedCoachId: true,
+          assignedCoach: { select: { id: true, name: true } },
         },
       },
     },

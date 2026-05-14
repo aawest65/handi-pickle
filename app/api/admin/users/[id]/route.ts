@@ -19,20 +19,28 @@ export async function PATCH(
   if (denied) return denied;
 
   const { id } = await params;
-  const { name, email, selfRatedCategory, currentRating, isClubAdmin, isTournamentDirector, dateOfBirth, gender } = await req.json();
+  const { name, email, selfRatedCategory, currentRating, isClubAdmin, isTournamentDirector, isCoach, assignedCoachId, dateOfBirth, gender } = await req.json();
+
+  const FULL_PLAYER_SELECT = {
+    id: true, playerNumber: true, currentRating: true, initialRating: true,
+    gamesPlayed: true, selfRatedCategory: true, onboardingComplete: true,
+    dateOfBirth: true, gender: true,
+    assignedCoachId: true, assignedCoach: { select: { id: true, name: true } },
+  } as const;
 
   // Flag-only update (toggles from the role panel)
-  if (isClubAdmin !== undefined || isTournamentDirector !== undefined) {
+  if (isClubAdmin !== undefined || isTournamentDirector !== undefined || isCoach !== undefined) {
     const updated = await prisma.user.update({
       where: { id },
       data: {
         ...(isClubAdmin          !== undefined && { isClubAdmin }),
         ...(isTournamentDirector !== undefined && { isTournamentDirector }),
+        ...(isCoach              !== undefined && { isCoach }),
       },
       select: {
         id: true, name: true, email: true, role: true,
-        isClubAdmin: true, isTournamentDirector: true,
-        player: { select: { id: true, playerNumber: true, currentRating: true, gamesPlayed: true, selfRatedCategory: true, onboardingComplete: true } },
+        isClubAdmin: true, isTournamentDirector: true, isCoach: true,
+        player: { select: FULL_PLAYER_SELECT },
       },
     });
     return NextResponse.json(updated);
@@ -58,7 +66,7 @@ export async function PATCH(
   }
 
   // Update player record if one exists
-  if (user.player && (name || selfRatedCategory || currentRating !== undefined || dateOfBirth || gender)) {
+  if (user.player && (name || selfRatedCategory || currentRating !== undefined || dateOfBirth || gender || assignedCoachId !== undefined)) {
     const validCategories = ["BEGINNER", "NOVICE", "NOVICE_PLUS", "INTERMEDIATE", "ADVANCED", "ADVANCED_PLUS", "EXPERT", "EXPERT_PLUS", "PRO"];
     if (selfRatedCategory && !validCategories.includes(selfRatedCategory)) {
       return NextResponse.json({ error: "Invalid category" }, { status: 400 });
@@ -85,6 +93,8 @@ export async function PATCH(
         ...(currentRating !== undefined && { currentRating }),
         ...(parsedDob      !== undefined && { dateOfBirth: parsedDob }),
         ...(gender         && { gender }),
+        // assignedCoachId: null clears the coach; a string value sets it
+        ...(assignedCoachId !== undefined && { assignedCoachId: assignedCoachId || null }),
       },
     });
   }
@@ -93,8 +103,8 @@ export async function PATCH(
     where: { id },
     select: {
       id: true, name: true, email: true, role: true,
-      isClubAdmin: true, isTournamentDirector: true,
-      player: { select: { id: true, playerNumber: true, currentRating: true, gamesPlayed: true, selfRatedCategory: true, onboardingComplete: true } },
+      isClubAdmin: true, isTournamentDirector: true, isCoach: true,
+      player: { select: FULL_PLAYER_SELECT },
     },
   });
 

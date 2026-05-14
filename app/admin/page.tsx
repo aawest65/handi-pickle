@@ -10,6 +10,7 @@ interface AdminUser {
   role: "USER" | "ADMIN" | "SUPER_ADMIN";
   isClubAdmin: boolean;
   isTournamentDirector: boolean;
+  isCoach: boolean;
   player: {
     id: string;
     playerNumber: string;
@@ -20,6 +21,8 @@ interface AdminUser {
     onboardingComplete: boolean;
     dateOfBirth: string;
     gender: string;
+    assignedCoachId: string | null;
+    assignedCoach: { id: string; name: string | null } | null;
   } | null;
 }
 
@@ -91,7 +94,7 @@ export default function AdminPage() {
 
   // Edit user state
   const [editUser, setEditUser] = useState<AdminUser | null>(null);
-  const [editForm, setEditForm] = useState({ name: "", email: "", selfRatedCategory: "", initialRating: "", dateOfBirth: "", gender: "" });
+  const [editForm, setEditForm] = useState({ name: "", email: "", selfRatedCategory: "", initialRating: "", dateOfBirth: "", gender: "", assignedCoachId: "" });
   const [editError, setEditError] = useState("");
   const [editLoading, setEditLoading] = useState(false);
 
@@ -116,7 +119,7 @@ export default function AdminPage() {
     return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
   }, [search]);
 
-  async function toggleFlag(userId: string, flag: "isClubAdmin" | "isTournamentDirector", current: boolean) {
+  async function toggleFlag(userId: string, flag: "isClubAdmin" | "isTournamentDirector" | "isCoach", current: boolean) {
     setUpdating(userId);
     try {
       const res = await fetch(`/api/admin/users/${userId}`, {
@@ -257,6 +260,7 @@ export default function AdminPage() {
         ? new Date(user.player.dateOfBirth).toISOString().split("T")[0]
         : "",
       gender: user.player?.gender ?? "",
+      assignedCoachId: user.player?.assignedCoachId ?? "",
     });
     setEditError("");
   }
@@ -277,6 +281,8 @@ export default function AdminPage() {
         if (!isNaN(r)) payload.initialRating = r;
         if (editForm.dateOfBirth) payload.dateOfBirth = editForm.dateOfBirth;
         if (editForm.gender)      payload.gender      = editForm.gender;
+        // Send the value always so clearing (empty string → null) is handled server-side
+        payload.assignedCoachId = editForm.assignedCoachId || null;
       }
       const res = await fetch(`/api/admin/users/${editUser.id}`, {
         method: "PATCH",
@@ -450,6 +456,9 @@ export default function AdminPage() {
                     {user.player && !user.player.onboardingComplete && (
                       <span className="text-xs text-amber-500">Incomplete onboarding</span>
                     )}
+                    {user.player?.assignedCoach && (
+                      <span className="text-xs text-indigo-400">Coach: {user.player.assignedCoach.name ?? "—"}</span>
+                    )}
                     {!user.email?.endsWith("@example.com") && (
                       <button
                         onClick={() => handleCopyResetLink(user.id)}
@@ -479,9 +488,9 @@ export default function AdminPage() {
                     )}
                     {isSuperAdmin && user.id !== session?.user?.id && (
                       <div className="flex gap-1.5 mt-2 flex-wrap">
-                        {(["isClubAdmin", "isTournamentDirector"] as const).map((flag) => {
+                        {(["isClubAdmin", "isTournamentDirector", "isCoach"] as const).map((flag) => {
                           const active = user[flag];
-                          const label  = flag === "isClubAdmin" ? "Club Admin" : "Tournament Director";
+                          const label  = flag === "isClubAdmin" ? "Club Admin" : flag === "isTournamentDirector" ? "Tournament Director" : "Coach";
                           return (
                             <button
                               key={flag}
@@ -778,6 +787,24 @@ export default function AdminPage() {
                     <p className="text-xs text-slate-600 mt-1">
                       Changes the opening rating and replays all recorded games from that new starting point.
                     </p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-400 mb-1">Assigned Coach</label>
+                    <select
+                      value={editForm.assignedCoachId}
+                      onChange={(e) => setEditForm((f) => ({ ...f, assignedCoachId: e.target.value }))}
+                      className={INPUT}
+                    >
+                      <option value="">— None —</option>
+                      {users.filter((u) => u.isCoach).map((coach) => (
+                        <option key={coach.id} value={coach.id}>
+                          {coach.name ?? coach.email}
+                        </option>
+                      ))}
+                    </select>
+                    {users.filter((u) => u.isCoach).length === 0 && (
+                      <p className="text-xs text-slate-500 mt-1">No coaches yet — toggle the Coach flag on a user first.</p>
+                    )}
                   </div>
                 </>
               )}
