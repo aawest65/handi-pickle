@@ -4,6 +4,13 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 
+interface CategoryRating {
+  format: string;
+  gameCategory: string;
+  rating: number;
+  gamesPlayed: number;
+}
+
 interface Player {
   id: string;
   playerNumber: string;
@@ -23,6 +30,7 @@ interface Player {
   singlesGamesPlayed: number;
   doublesGamesPlayed: number;
   mixedGamesPlayed: number;
+  categoryRatings: CategoryRating[];
 }
 
 const CATEGORY_COLOR: Record<string, string> = {
@@ -41,22 +49,27 @@ function categoryLabel(c: string) {
   return c.charAt(0) + c.slice(1).toLowerCase().replace("_plus", "+").replace("_", " ");
 }
 
-function RatingStat({ label, value, played }: { label: string; value: number; played: number }) {
-  return (
-    <div className="flex flex-col items-center">
-      <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-0.5">{label}</span>
-      {played > 0 ? (
-        <span className="text-sm font-bold text-slate-100">{value.toFixed(2)}</span>
-      ) : (
-        <span className="text-sm text-slate-600">—</span>
-      )}
-    </div>
-  );
+// Returns the best rating for a format+category combo (most games played wins for CLUB multi-club)
+function getCatRating(ratings: CategoryRating[], format: string, category: string): number | null {
+  const matches = ratings.filter((r) => r.format === format && r.gameCategory === category && r.gamesPlayed > 0);
+  if (!matches.length) return null;
+  return matches.reduce((a, b) => (a.gamesPlayed >= b.gamesPlayed ? a : b)).rating;
 }
+
+const NINE_CELLS: { label: string; format: string; cat: string }[] = [
+  { label: "RD",  format: "DOUBLES", cat: "REC"    },
+  { label: "RMx", format: "MIXED",   cat: "REC"    },
+  { label: "RS",  format: "SINGLES", cat: "REC"    },
+  { label: "CD",  format: "DOUBLES", cat: "CLUB"   },
+  { label: "CMx", format: "MIXED",   cat: "CLUB"   },
+  { label: "CS",  format: "SINGLES", cat: "CLUB"   },
+  { label: "TD",  format: "DOUBLES", cat: "TOURNEY" },
+  { label: "TMx", format: "MIXED",   cat: "TOURNEY" },
+  { label: "TS",  format: "SINGLES", cat: "TOURNEY" },
+];
 
 function PlayerCard({ player }: { player: Player }) {
   const initials = player.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
-  const doublesLabel = player.gender === "MALE" ? "Men's Dbl" : "Women's Dbl";
 
   return (
     <Link
@@ -92,11 +105,19 @@ function PlayerCard({ player }: { player: Player }) {
         <span className="text-xs text-slate-600">#{player.playerNumber}</span>
       </div>
 
-      {/* Per-format ratings */}
-      <div className="border-t border-slate-700 pt-3 grid grid-cols-3 gap-2">
-        <RatingStat label="Singles"    value={player.singlesRating} played={player.singlesGamesPlayed} />
-        <RatingStat label={doublesLabel} value={player.doublesRating} played={player.doublesGamesPlayed} />
-        <RatingStat label="Mixed"      value={player.mixedRating}   played={player.mixedGamesPlayed} />
+      {/* 9-category rating grid */}
+      <div className="border-t border-slate-700 pt-3 grid grid-cols-3 gap-x-2 gap-y-1.5">
+        {NINE_CELLS.map(({ label, format, cat }) => {
+          const val = getCatRating(player.categoryRatings, format, cat);
+          return (
+            <div key={label} className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-slate-500">{label}</span>
+              <span className={`text-xs font-semibold tabular-nums ${val !== null ? "text-slate-200" : "text-slate-700"}`}>
+                {val !== null ? val.toFixed(2) : "—"}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </Link>
   );
