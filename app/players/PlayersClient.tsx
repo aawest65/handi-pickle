@@ -97,13 +97,8 @@ function PlayerCard({ player }: { player: Player }) {
         </div>
       </div>
 
-      {/* Category badge */}
-      <div className="flex items-center gap-2">
-        <span className={`px-2 py-0.5 rounded text-xs font-semibold border ${CATEGORY_COLOR[player.selfRatedCategory] ?? CATEGORY_COLOR.NOVICE}`}>
-          {categoryLabel(player.selfRatedCategory)}
-        </span>
-        <span className="text-xs text-slate-600">#{player.playerNumber}</span>
-      </div>
+      {/* Player number */}
+      <p className="text-xs text-slate-600">#{player.playerNumber}</p>
 
       {/* 9-category rating grid */}
       <div className="border-t border-slate-700 pt-3 grid grid-cols-3 gap-x-2 gap-y-1.5">
