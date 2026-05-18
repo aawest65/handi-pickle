@@ -109,7 +109,7 @@ function PlayerCard({ player }: { player: Player }) {
               </div>
             );
           })()}
-          <p className="text-[10px] text-slate-500 mt-0.5 text-center">sport.</p>
+          <p className="text-[9px] text-slate-500 mt-0.5 text-center leading-tight">Sports-<br/>manship</p>
         </div>
       </div>
 
