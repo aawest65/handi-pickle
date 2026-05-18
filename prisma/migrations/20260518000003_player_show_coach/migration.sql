@@ -1,0 +1,1 @@
+ALTER TABLE "Player" ADD COLUMN "showCoach" BOOLEAN NOT NULL DEFAULT true;
