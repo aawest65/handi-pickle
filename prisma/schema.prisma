@@ -79,6 +79,7 @@ model User {
   clubJoinReviews       ClubJoinRequest[]    @relation("ClubJoinReviewer")
   submittedGames        Game[]               @relation("GameSubmittedBy")
   coachedPlayers        Player[]             @relation("PlayerCoach")
+  coachRequests         CoachRequest[]       @relation("CoachRequests")
   playerMetrics         PlayerMetrics[]      @relation("MetricsCoach")
   playerMetricsHistory  PlayerMetricsHistory[] @relation("MetricsHistoryCoach")
   coachProfile          CoachProfile?
@@ -246,6 +247,7 @@ model Player {
   team2Player2Games    Game[]                @relation("T2P2")
   ratingHistory        RatingHistory[]
   metricsHistory       PlayerMetricsHistory[]
+  coachRequests        CoachRequest[]
   categoryRatings        PlayerCategoryRating[]
   sportsmanshipGiven     SportsmanshipRating[]    @relation("Rater")
   sportsmanshipReceived  SportsmanshipRating[]    @relation("RatedPlayer")
@@ -433,6 +435,22 @@ model PlayerMetrics {
 
   player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
   coach  User?  @relation("MetricsCoach", fields: [coachId], references: [id], onDelete: SetNull)
+}
+
+// Player-initiated request to assign a coach. Coach accepts/declines; acceptance sets assignedCoachId.
+// status: PENDING | ACCEPTED | DECLINED
+model CoachRequest {
+  id          String    @id @default(cuid())
+  playerId    String
+  coachUserId String
+  status      String    @default("PENDING")
+  requestedAt DateTime  @default(now())
+  reviewedAt  DateTime?
+
+  player    Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  coachUser User   @relation("CoachRequests", fields: [coachUserId], references: [id], onDelete: Cascade)
+
+  @@unique([playerId, coachUserId])
 }
 
 // Snapshot written every time a coach saves metrics. Drives the history tab and trend display.

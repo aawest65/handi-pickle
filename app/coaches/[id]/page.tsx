@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { CERT_OPTIONS, SPECIALTY_OPTIONS, SPECIALTY_COLORS } from "../constants";
 import { ReviewSection } from "./ReviewSection";
+import { RequestCoachButton } from "./RequestCoachButton";
 
 async function getProfile(id: string) {
   return prisma.coachProfile.findUnique({
@@ -53,14 +54,31 @@ export default async function CoachProfilePage({ params }: { params: Promise<{ i
   const isOwner = session?.user?.id === profile.userId;
   const viewerPlayerId = session?.user?.playerId ?? null;
 
+  const viewerPlayer = viewerPlayerId
+    ? await prisma.player.findUnique({
+        where: { id: viewerPlayerId },
+        select: { assignedCoachId: true },
+      })
+    : null;
+
   // Can the viewer leave a review? Must be an assigned player of this coach.
-  const canReview = viewerPlayerId
-    ? (await prisma.player.findUnique({ where: { id: viewerPlayerId }, select: { assignedCoachId: true } }))?.assignedCoachId === profile.userId
-    : false;
+  const canReview = viewerPlayer?.assignedCoachId === profile.userId;
+  const isCurrentCoach = canReview;
+
+  const coachRequest = viewerPlayerId
+    ? await prisma.coachRequest.findUnique({
+        where: { playerId_coachUserId: { playerId: viewerPlayerId, coachUserId: profile.userId } },
+        select: { status: true },
+      })
+    : null;
+
+  // Show the request button to logged-in players who are not the coach owner
+  const showRequestButton = !!viewerPlayerId && !isOwner;
 
   const existingReview = viewerPlayerId
     ? profile.reviews.find((r) => r.reviewerPlayer.id === viewerPlayerId) ?? null
     : null;
+
 
   const avatarUrl = profile.user.player?.avatarUrl ?? profile.user.image ?? null;
   const city  = profile.city ?? profile.user.player?.city ?? null;
@@ -109,6 +127,16 @@ export default async function CoachProfilePage({ params }: { params: Promise<{ i
               )}
             </div>
           </div>
+
+          {showRequestButton && (
+            <div className="mt-4 pt-4 border-t border-slate-700">
+              <RequestCoachButton
+                coachProfileId={profile.id}
+                initialStatus={(coachRequest?.status ?? null) as "PENDING" | "ACCEPTED" | "DECLINED" | null}
+                isCurrentCoach={isCurrentCoach}
+              />
+            </div>
+          )}
 
           {profile.bio && (
             <p className="mt-5 text-sm text-slate-300 leading-relaxed border-t border-slate-700 pt-4">{profile.bio}</p>
