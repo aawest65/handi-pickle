@@ -126,28 +126,47 @@ export default function ClubsPage() {
   const hasLocation = !!playerState && !q;
   const nearby  = hasLocation ? filtered.filter((c) => c.state === playerState) : [];
   const others  = hasLocation ? filtered.filter((c) => c.state !== playerState) : filtered;
+  const myClubs = clubs.filter((c) => memberClubIds.has(c.id));
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
-      <div className="mb-6">
-        <div className="flex items-center gap-3">
-          <h1 className="text-3xl font-bold text-slate-100">Clubs</h1>
-          <Link
-            href="/clubs/request"
-            className="px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-white text-xs font-semibold rounded-lg transition-colors"
-          >
-            + Create a Club
-          </Link>
-        </div>
-        <p className="text-slate-400 mt-1">
-          {clubs.length} registered club{clubs.length !== 1 ? "s" : ""}
-          {memberClubIds.size > 0 && (
-            <span className="ml-2 text-teal-400 text-sm">
-              · Member of {memberClubIds.size}
-            </span>
-          )}
-        </p>
+      <div className="flex items-center gap-3 mb-6">
+        <h1 className="text-3xl font-bold text-slate-100">Clubs</h1>
+        <Link
+          href="/clubs/request"
+          className="px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-white text-xs font-semibold rounded-lg transition-colors"
+        >
+          + Create a Club
+        </Link>
       </div>
+
+      {/* Sticky My Clubs bar */}
+      {myClubs.length > 0 && (
+        <div className="sticky top-0 z-20 bg-slate-950 border-b border-slate-800 -mx-4 px-4 py-3 mb-6">
+          <div className="flex items-center gap-2 overflow-x-auto pb-0.5">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest shrink-0">My Clubs</span>
+            {myClubs.map((club) => (
+              <Link
+                key={club.id}
+                href={`/leaderboard?clubId=${club.id}`}
+                className="flex items-center gap-1.5 shrink-0 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-teal-700/50 rounded-full transition-colors"
+              >
+                {club.logoUrl ? (
+                  <img src={club.logoUrl} alt="" className="w-5 h-5 rounded-full object-cover shrink-0" />
+                ) : (
+                  <div className="w-5 h-5 rounded-full bg-teal-900 flex items-center justify-center text-[10px] font-bold text-teal-300 shrink-0">
+                    {club.name.charAt(0)}
+                  </div>
+                )}
+                <span className="text-xs font-medium text-slate-200 max-w-[120px] truncate">{club.name}</span>
+                {primaryClubId === club.id && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0" />
+                )}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {clubs.length > 0 && (
         <div className="relative mb-6">
