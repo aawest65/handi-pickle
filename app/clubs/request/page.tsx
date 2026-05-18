@@ -123,7 +123,7 @@ export default function ClubRequestPage() {
     <div className="max-w-lg mx-auto px-4 py-10">
       <div className="mb-6">
         <Link href="/" className="text-slate-400 hover:text-slate-200 text-sm">← Back</Link>
-        <h1 className="text-2xl font-bold text-slate-100 mt-3">Request a Club</h1>
+        <h1 className="text-2xl font-bold text-slate-100 mt-3">Create a Club</h1>
         <p className="text-slate-400 text-sm mt-1">
           Submit your club for review. Once approved, you&apos;ll be set as the primary admin.
         </p>

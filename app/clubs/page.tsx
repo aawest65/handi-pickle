@@ -129,24 +129,24 @@ export default function ClubsPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-10">
-      <div className="flex items-start justify-between mb-6 flex-wrap gap-4">
-        <div>
+      <div className="mb-6">
+        <div className="flex items-center gap-3">
           <h1 className="text-3xl font-bold text-slate-100">Clubs</h1>
-          <p className="text-slate-400 mt-1">
-            {clubs.length} registered club{clubs.length !== 1 ? "s" : ""}
-            {memberClubIds.size > 0 && (
-              <span className="ml-2 text-teal-400 text-sm">
-                · Member of {memberClubIds.size}
-              </span>
-            )}
-          </p>
+          <Link
+            href="/clubs/request"
+            className="px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-white text-xs font-semibold rounded-lg transition-colors"
+          >
+            + Create a Club
+          </Link>
         </div>
-        <Link
-          href="/clubs/request"
-          className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white text-sm font-semibold rounded-lg transition-colors"
-        >
-          + Request a Club
-        </Link>
+        <p className="text-slate-400 mt-1">
+          {clubs.length} registered club{clubs.length !== 1 ? "s" : ""}
+          {memberClubIds.size > 0 && (
+            <span className="ml-2 text-teal-400 text-sm">
+              · Member of {memberClubIds.size}
+            </span>
+          )}
+        </p>
       </div>
 
       {clubs.length > 0 && (
@@ -177,7 +177,7 @@ export default function ClubsPage() {
           <p className="text-lg font-medium text-slate-300 mb-2">No clubs yet</p>
           <p className="text-slate-500 text-sm mb-6">Be the first to establish a club.</p>
           <Link href="/clubs/request" className="px-5 py-2.5 bg-teal-600 hover:bg-teal-500 text-white text-sm font-semibold rounded-lg transition-colors">
-            Request a Club
+            Create a Club
           </Link>
         </div>
       ) : filtered.length === 0 ? (
