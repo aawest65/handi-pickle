@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth";
 import { pickleballAge } from "@/lib/pickleballAge";
 import { calcReliability, RELIABILITY_GAMES_TARGET } from "@/lib/reliability";
 import { MetricsButton } from "./MetricsModal";
+import Link from "next/link";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -40,6 +41,7 @@ async function getPlayer(id: string) {
     where: { id },
     include: {
       memberships: { where: { isPrimary: true }, select: { club: { select: { id: true, name: true } } } },
+      assignedCoach: { select: { name: true, coachProfile: { select: { id: true } } } },
       categoryRatings: true,
       ratingHistory: {
         include: {
@@ -169,6 +171,21 @@ export default async function PlayerProfilePage({
                   <span className="ml-2">· {[player.city, player.state].filter(Boolean).join(", ")}</span>
                 )}
               </p>
+              {player.assignedCoach && (
+                <p className="text-sm text-slate-400 mt-1 flex items-center gap-1.5">
+                  <svg className="w-3.5 h-3.5 text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  <span className="text-slate-500">Coach:</span>
+                  {player.assignedCoach.coachProfile ? (
+                    <Link href={`/coaches/${player.assignedCoach.coachProfile.id}`} className="text-indigo-400 hover:text-indigo-300 transition-colors">
+                      {player.assignedCoach.name}
+                    </Link>
+                  ) : (
+                    <span className="text-indigo-400">{player.assignedCoach.name}</span>
+                  )}
+                </p>
+              )}
 
               {/* Stats row */}
               <div className="mt-4 grid grid-cols-3 md:flex md:flex-nowrap divide-y divide-x-0 md:divide-y-0 md:divide-x divide-slate-700 border border-slate-700 rounded-xl overflow-hidden w-full md:w-fit">
