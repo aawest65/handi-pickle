@@ -30,6 +30,8 @@ interface Player {
   singlesGamesPlayed: number;
   doublesGamesPlayed: number;
   mixedGamesPlayed: number;
+  sportsmanshipSum: number;
+  sportsmanshipCount: number;
   categoryRatings: CategoryRating[];
 }
 
@@ -92,8 +94,22 @@ function PlayerCard({ player }: { player: Player }) {
           )}
         </div>
         <div className="text-right shrink-0">
-          <p className="text-lg font-bold text-teal-400 tabular-nums">{player.currentRating.toFixed(2)}</p>
-          <p className="text-[10px] text-slate-500">{player.gamesPlayed}g played</p>
+          {(() => {
+            const { sportsmanshipSum: sum, sportsmanshipCount: count } = player;
+            const avg = count > 0 ? sum / count : null;
+            const grade = avg === null ? "—" : avg >= 4.5 ? "A" : avg >= 3.5 ? "B" : avg >= 2.5 ? "C" : avg >= 1.5 ? "D" : "F";
+            const color = grade === "A" ? "border-emerald-500 bg-emerald-900/50 text-emerald-300"
+              : grade === "B" ? "border-teal-500 bg-teal-900/50 text-teal-300"
+              : grade === "C" ? "border-yellow-500 bg-yellow-900/50 text-yellow-300"
+              : grade === "—" ? "border-slate-600 text-slate-500"
+              : "border-red-500 bg-red-900/50 text-red-300";
+            return (
+              <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold border-2 ${color}`}>
+                {grade}
+              </div>
+            );
+          })()}
+          <p className="text-[10px] text-slate-500 mt-0.5 text-center">sport.</p>
         </div>
       </div>
 

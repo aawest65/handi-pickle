@@ -12,6 +12,7 @@ async function getPlayers() {
       gamesPlayed: true, showAge: true, avatarUrl: true,
       singlesRating: true, doublesRating: true, mixedRating: true,
       singlesGamesPlayed: true, doublesGamesPlayed: true, mixedGamesPlayed: true,
+      sportsmanshipSum: true, sportsmanshipCount: true,
       categoryRatings: { select: { format: true, gameCategory: true, rating: true, gamesPlayed: true } },
     },
   });
