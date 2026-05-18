@@ -26,14 +26,36 @@ export function RequestCoachButton({ coachProfileId, initialStatus, isCurrentCoa
 
   if (status === "PENDING") {
     return (
-      <div className="flex items-center gap-2 px-4 py-2 bg-amber-900/30 border border-amber-700/50 rounded-xl text-amber-400 text-sm font-semibold">
-        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-        </svg>
-        Request Pending
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 px-4 py-2 bg-amber-900/30 border border-amber-700/50 rounded-xl text-amber-400 text-sm font-semibold">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Request Pending
+        </div>
+        <button
+          onClick={cancelRequest}
+          disabled={loading}
+          className="text-xs text-slate-500 hover:text-red-400 transition-colors disabled:opacity-50"
+        >
+          Cancel
+        </button>
       </div>
     );
+  }
+
+  async function cancelRequest() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/coaches/${coachProfileId}/request`, { method: "DELETE" });
+      if (!res.ok) throw new Error((await res.json()).error ?? "Cancel failed");
+      setStatus(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Cancel failed");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function sendRequest() {

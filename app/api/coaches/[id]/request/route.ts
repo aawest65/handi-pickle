@@ -26,6 +26,38 @@ export async function GET(
   return NextResponse.json({ status: req?.status ?? null });
 }
 
+// DELETE: player cancels a pending request
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth();
+  const playerId = session?.user?.playerId ?? null;
+  if (!playerId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id: coachProfileId } = await params;
+  const profile = await prisma.coachProfile.findUnique({
+    where: { id: coachProfileId },
+    select: { userId: true },
+  });
+  if (!profile) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const existing = await prisma.coachRequest.findUnique({
+    where: { playerId_coachUserId: { playerId, coachUserId: profile.userId } },
+    select: { status: true },
+  });
+
+  if (!existing || existing.status !== "PENDING") {
+    return NextResponse.json({ error: "No pending request to cancel" }, { status: 409 });
+  }
+
+  await prisma.coachRequest.delete({
+    where: { playerId_coachUserId: { playerId, coachUserId: profile.userId } },
+  });
+
+  return NextResponse.json({ status: null });
+}
+
 // POST: player sends a coach request (or re-sends a declined one)
 export async function POST(
   _req: NextRequest,
