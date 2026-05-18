@@ -17,10 +17,26 @@ interface Metrics {
   updatedAt:      string;
 }
 
+interface HistoryEntry {
+  id:             string;
+  createdAt:      string;
+  coach:          { name: string | null } | null;
+  serveRating:    number | null;
+  serveSpeed:     number | null;
+  returnSkill:    number | null;
+  defense:        number | null;
+  offense:        number | null;
+  lobbing:        number | null;
+  dinking:        number | null;
+  drops:          number | null;
+  speedUps:       number | null;
+  unforcedErrors: number | null;
+}
+
 interface Medals { gold: number; silver: number; bronze: number }
 
 interface Props {
-  playerId:       string;
+  playerId:        string;
   isAssignedCoach: boolean;
 }
 
@@ -56,6 +72,16 @@ function RatingBar({ value, invert }: { value: number | null; invert?: boolean }
   );
 }
 
+function TrendArrow({ current, previous, invert }: { current: number | null; previous: number | null; invert?: boolean }) {
+  if (current === null || previous === null) return null;
+  const delta = current - previous;
+  if (Math.abs(delta) < 0.05) return <span className="text-slate-500 text-xs">→</span>;
+  const improving = invert ? delta < 0 : delta > 0;
+  return improving
+    ? <span className="text-teal-400 text-xs font-bold">▲</span>
+    : <span className="text-red-400 text-xs font-bold">▼</span>;
+}
+
 function StepSelect({
   value,
   onChange,
@@ -77,11 +103,52 @@ function StepSelect({
   );
 }
 
+function HistoryEntryCard({ entry, prev }: { entry: HistoryEntry; prev: HistoryEntry | null }) {
+  const coachChanged = prev !== null && (entry.coach?.name ?? null) !== (prev.coach?.name ?? null);
+
+  return (
+    <div className="border border-slate-700 rounded-xl p-4 space-y-3">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-sm font-semibold text-slate-200">
+            {new Date(entry.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+          </p>
+          {entry.coach?.name && (
+            <p className="text-xs text-slate-400 mt-0.5">By {entry.coach.name}</p>
+          )}
+        </div>
+        {coachChanged && (
+          <span className="text-[10px] font-semibold tracking-wide text-amber-400 border border-amber-500/40 bg-amber-500/10 rounded-full px-2 py-0.5 whitespace-nowrap">
+            Coach changed
+          </span>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        {SKILL_ROWS.map(({ field, label, invertBar }) => {
+          const val = (entry as unknown as Record<string, number | null>)[field] ?? null;
+          const prevVal = prev ? (prev as unknown as Record<string, number | null>)[field] ?? null : null;
+          return (
+            <div key={field} className="grid grid-cols-[110px_1fr_16px] items-center gap-2">
+              <span className="text-xs text-slate-400">{label}</span>
+              <RatingBar value={val} invert={invertBar} />
+              <TrendArrow current={val} previous={prevVal} invert={invertBar} />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function MetricsButton({ playerId, isAssignedCoach }: Props) {
   const [open, setOpen]       = useState(false);
+  const [tab, setTab]         = useState<"current" | "history">("current");
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [medals, setMedals]   = useState<Medals>({ gold: 0, silver: 0, bronze: 0 });
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loading, setLoading] = useState(false);
+  const [histLoading, setHistLoading] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft]     = useState<Partial<Record<keyof Omit<Metrics, "coach" | "updatedAt">, number | null>>>({});
   const [saving, setSaving]   = useState(false);
@@ -99,6 +166,15 @@ export function MetricsButton({ playerId, isAssignedCoach }: Props) {
       })
       .finally(() => setLoading(false));
   }, [open, playerId]);
+
+  useEffect(() => {
+    if (!open || tab !== "history") return;
+    setHistLoading(true);
+    fetch(`/api/players/${playerId}/metrics/history`)
+      .then((r) => r.json())
+      .then(setHistory)
+      .finally(() => setHistLoading(false));
+  }, [open, tab, playerId]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === "Escape") setOpen(false); }
@@ -134,11 +210,19 @@ export function MetricsButton({ playerId, isAssignedCoach }: Props) {
       const updated = await res.json();
       setMetrics(updated);
       setEditing(false);
+      // Invalidate cached history so it reloads fresh next time
+      setHistory([]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Save failed");
     } finally {
       setSaving(false);
     }
+  }
+
+  function close() {
+    setOpen(false);
+    setEditing(false);
+    setTab("current");
   }
 
   const hasMedals = medals.gold + medals.silver + medals.bronze > 0;
@@ -161,7 +245,7 @@ export function MetricsButton({ playerId, isAssignedCoach }: Props) {
       {open && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-          onClick={(e) => { if (e.target === e.currentTarget) { setOpen(false); setEditing(false); } }}
+          onClick={(e) => { if (e.target === e.currentTarget) close(); }}
         >
           <div
             ref={dialogRef}
@@ -170,11 +254,28 @@ export function MetricsButton({ playerId, isAssignedCoach }: Props) {
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700">
               <h2 className="text-lg font-bold text-slate-100">Player Metrics</h2>
-              <button onClick={() => { setOpen(false); setEditing(false); }} className="text-slate-500 hover:text-slate-300 transition-colors">
+              <button onClick={close} className="text-slate-500 hover:text-slate-300 transition-colors">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex border-b border-slate-700">
+              {(["current", "history"] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => { setTab(t); setEditing(false); }}
+                  className={`flex-1 py-2.5 text-xs font-semibold tracking-wider uppercase transition-colors ${
+                    tab === t
+                      ? "text-teal-400 border-b-2 border-teal-400"
+                      : "text-slate-500 hover:text-slate-300"
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
             </div>
 
             {loading ? (
@@ -184,7 +285,7 @@ export function MetricsButton({ playerId, isAssignedCoach }: Props) {
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                 </svg>
               </div>
-            ) : (
+            ) : tab === "current" ? (
               <div className="px-5 py-4 space-y-5">
 
                 {/* Medals */}
@@ -277,6 +378,34 @@ export function MetricsButton({ playerId, isAssignedCoach }: Props) {
                     </p>
                   )}
                 </div>
+              </div>
+            ) : (
+              /* History tab */
+              <div className="px-5 py-4">
+                {histLoading ? (
+                  <div className="py-12 flex items-center justify-center text-slate-400">
+                    <svg className="w-6 h-6 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                    </svg>
+                  </div>
+                ) : history.length === 0 ? (
+                  <p className="text-sm text-slate-500 italic text-center py-12">No assessment history yet.</p>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-xs text-slate-500">
+                      {history.length} assessment{history.length !== 1 ? "s" : ""} · most recent first.
+                      Arrows show change from the previous assessment.
+                    </p>
+                    {history.map((entry, i) => (
+                      <HistoryEntryCard
+                        key={entry.id}
+                        entry={entry}
+                        prev={history[i + 1] ?? null}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>

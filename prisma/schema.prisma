@@ -80,6 +80,7 @@ model User {
   submittedGames        Game[]               @relation("GameSubmittedBy")
   coachedPlayers        Player[]             @relation("PlayerCoach")
   playerMetrics         PlayerMetrics[]      @relation("MetricsCoach")
+  playerMetricsHistory  PlayerMetricsHistory[] @relation("MetricsHistoryCoach")
   coachProfile          CoachProfile?
 }
 
@@ -244,6 +245,7 @@ model Player {
   team2Player1Games    Game[]                @relation("T2P1")
   team2Player2Games    Game[]                @relation("T2P2")
   ratingHistory        RatingHistory[]
+  metricsHistory       PlayerMetricsHistory[]
   categoryRatings        PlayerCategoryRating[]
   sportsmanshipGiven     SportsmanshipRating[]    @relation("Rater")
   sportsmanshipReceived  SportsmanshipRating[]    @relation("RatedPlayer")
@@ -431,4 +433,28 @@ model PlayerMetrics {
 
   player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
   coach  User?  @relation("MetricsCoach", fields: [coachId], references: [id], onDelete: SetNull)
+}
+
+// Snapshot written every time a coach saves metrics. Drives the history tab and trend display.
+model PlayerMetricsHistory {
+  id             String   @id @default(cuid())
+  playerId       String
+  coachId        String?
+  createdAt      DateTime @default(now())
+
+  serveRating    Float?
+  serveSpeed     Float?
+  returnSkill    Float?
+  defense        Float?
+  offense        Float?
+  lobbing        Float?
+  dinking        Float?
+  drops          Float?
+  speedUps       Float?
+  unforcedErrors Float?
+
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  coach  User?  @relation("MetricsHistoryCoach", fields: [coachId], references: [id], onDelete: SetNull)
+
+  @@index([playerId, createdAt(sort: Desc)])
 }

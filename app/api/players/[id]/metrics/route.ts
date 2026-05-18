@@ -97,12 +97,17 @@ export async function PUT(
     if (field in body) data[field] = body[field] ?? null;
   }
 
-  const updated = await prisma.playerMetrics.upsert({
-    where: { playerId },
-    create: { playerId, ...data },
-    update: data,
-    include: { coach: { select: { name: true } } },
-  });
+  const [updated] = await prisma.$transaction([
+    prisma.playerMetrics.upsert({
+      where: { playerId },
+      create: { playerId, ...data },
+      update: data,
+      include: { coach: { select: { name: true } } },
+    }),
+    prisma.playerMetricsHistory.create({
+      data: { playerId, ...data },
+    }),
+  ]);
 
   return NextResponse.json(updated);
 }
