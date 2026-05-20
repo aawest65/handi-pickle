@@ -36,6 +36,20 @@ interface PendingGame {
   submittedBy: { name: string | null } | null;
 }
 
+interface SubmittedGame {
+  id: string;
+  format: string;
+  date: string;
+  team1Score: number;
+  team2Score: number;
+  status: string;
+  createdAt: string;
+  team1Player1: { id: string; name: string };
+  team1Player2: { id: string; name: string } | null;
+  team2Player1: { id: string; name: string };
+  team2Player2: { id: string; name: string } | null;
+}
+
 interface Player {
   id:     string;
   name:   string;
@@ -158,6 +172,7 @@ export default function MatchesPage() {
   const [players, setPlayers]             = useState<Player[]>([]);
   const [tournaments, setTournaments]     = useState<Tournament[]>([]);
   const [pendingGames, setPendingGames]   = useState<PendingGame[]>([]);
+  const [submittedGames, setSubmittedGames] = useState<SubmittedGame[]>([]);
   const [loading, setLoading]             = useState(false);
   const [error, setError]                 = useState<string | null>(null);
 
@@ -196,6 +211,10 @@ export default function MatchesPage() {
     fetch("/api/matches/pending")
       .then((r) => r.json())
       .then((d) => Array.isArray(d) && setPendingGames(d))
+      .catch(console.error);
+    fetch("/api/matches/submitted")
+      .then((r) => r.json())
+      .then((d) => Array.isArray(d) && setSubmittedGames(d))
       .catch(console.error);
   }, [status]);
 
@@ -334,6 +353,40 @@ export default function MatchesPage() {
                   </div>
                   <span className="text-amber-400 text-sm ml-3 shrink-0 group-hover:translate-x-0.5 transition-transform">Review →</span>
                 </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* My recent submissions */}
+      {submittedGames.length > 0 && (
+        <div className="mb-8 bg-slate-800/60 border border-slate-700 rounded-xl p-4">
+          <h2 className="text-sm font-semibold text-slate-300 mb-3">My Recent Submissions</h2>
+          <div className="space-y-2">
+            {submittedGames.map((g) => {
+              const t1 = [g.team1Player1, g.team1Player2].filter(Boolean).map((p) => p!.name).join(" & ");
+              const t2 = [g.team2Player1, g.team2Player2].filter(Boolean).map((p) => p!.name).join(" & ");
+              const dateStr = new Date(g.date).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+              const statusBadge: Record<string, { label: string; cls: string }> = {
+                PENDING:  { label: "Awaiting Approval", cls: "bg-amber-900/40 text-amber-300 border-amber-700/50" },
+                APPROVED: { label: "Approved",          cls: "bg-teal-900/40 text-teal-300 border-teal-700/50" },
+                DISPUTED: { label: "Disputed",          cls: "bg-red-900/40 text-red-300 border-red-700/50" },
+                FLAGGED:  { label: "Flagged",           cls: "bg-orange-900/40 text-orange-300 border-orange-700/50" },
+              };
+              const badge = statusBadge[g.status] ?? { label: g.status, cls: "bg-slate-700 text-slate-400 border-slate-600" };
+
+              return (
+                <div key={g.id} className="flex items-center justify-between gap-3 bg-slate-900/50 border border-slate-700 rounded-lg px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="text-sm text-slate-200 truncate">{t1} <span className="text-slate-500">vs</span> {t2}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{dateStr} · {g.team1Score}–{g.team2Score}</p>
+                  </div>
+                  <span className={`shrink-0 text-[11px] font-semibold border rounded-full px-2.5 py-0.5 ${badge.cls}`}>
+                    {badge.label}
+                  </span>
+                </div>
               );
             })}
           </div>
