@@ -449,6 +449,49 @@ export default function MatchesPage() {
           </div>
         </div>
 
+        {/* Rating impact note */}
+        {(() => {
+          const requiredCount = isDoubles ? 4 : 2;
+          const selectedIds = [team1Player1Id, isDoubles ? team1Player2Id : null, team2Player1Id, isDoubles ? team2Player2Id : null].filter(Boolean);
+          const allSelected = selectedIds.length >= requiredCount;
+
+          if (isTourneyType) return null;
+
+          if (!allSelected) {
+            return (
+              <div className="flex items-start gap-2.5 px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-xs text-slate-400">
+                <svg className="w-4 h-4 shrink-0 mt-0.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20A10 10 0 0012 2z" />
+                </svg>
+                <span>Scores count toward <strong className="text-slate-300">Club ratings</strong> (CD / CMx / CS) when all players share a club. Otherwise they count toward <strong className="text-slate-300">Recreational ratings</strong> (RD / RMx / RS).</span>
+              </div>
+            );
+          }
+
+          if (clubOptions.length > 0 && selectedClubId) {
+            return (
+              <div className="flex items-start gap-2.5 px-4 py-3 bg-purple-900/20 border border-purple-700/50 rounded-xl text-xs text-purple-300">
+                <svg className="w-4 h-4 shrink-0 mt-0.5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>This score will update <strong>Club ratings</strong> (CD / CMx / CS) for <strong>{clubOptions.find(c => c.id === selectedClubId)?.name}</strong>.</span>
+              </div>
+            );
+          }
+
+          return (
+            <div className="flex items-start gap-2.5 px-4 py-3 bg-teal-900/20 border border-teal-700/50 rounded-xl text-xs text-teal-300">
+              <svg className="w-4 h-4 shrink-0 mt-0.5 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>
+                This score will update <strong>Recreational ratings</strong> (RD / RMx / RS)
+                {clubOptions.length > 0 && !selectedClubId ? " — select a club above to count as club play." : " — at least one player is not a club member."}
+              </span>
+            </div>
+          );
+        })()}
+
         {/* Teams */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           {/* Team 1 */}
