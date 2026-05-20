@@ -10,7 +10,10 @@ export async function GET() {
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const games = await prisma.game.findMany({
-    where: { submittedByUserId: session.user.id },
+    where: {
+      submittedByUserId: session.user.id,
+      status: { in: ["PENDING", "FLAGGED", "DISPUTED"] },
+    },
     orderBy: { createdAt: "desc" },
     take: 10,
     select: {

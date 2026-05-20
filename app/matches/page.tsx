@@ -359,11 +359,12 @@ export default function MatchesPage() {
         </div>
       )}
 
-      {/* My recent submissions */}
+      {/* Pending submissions */}
+      {submittedGames.length > 0 && (
       <div className="mb-8 bg-slate-800/60 border border-slate-700 rounded-xl p-4">
-        <h2 className="text-sm font-semibold text-slate-300 mb-3">My Recent Submissions</h2>
+        <h2 className="text-sm font-semibold text-slate-300 mb-3">My Pending Submissions</h2>
         {submittedGames.length === 0 ? (
-          <p className="text-xs text-slate-500">No games submitted yet.</p>
+          <p className="text-xs text-slate-500">No pending submissions.</p>
         ) : (
           <div className="space-y-2">
             {submittedGames.map((g) => {
@@ -394,6 +395,7 @@ export default function MatchesPage() {
           </div>
         )}
       </div>
+      )}
 
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-100">Record a Game</h1>
