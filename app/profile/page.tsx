@@ -6,7 +6,14 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { pickleballAge } from "@/lib/pickleballAge";
-import { ReliabilityBar } from "@/app/components/ReliabilityBar";
+
+interface CategoryRating {
+  format: string;
+  gameCategory: string;
+  rating: number;
+  gamesPlayed: number;
+  clubId: string | null;
+}
 
 interface PlayerProfile {
   playerNumber: string;
@@ -18,12 +25,6 @@ interface PlayerProfile {
   selfRatedCategory: string;
   currentRating: number;
   gamesPlayed: number;
-  singlesRating: number;
-  doublesRating: number;
-  mixedRating: number;
-  singlesGamesPlayed: number;
-  doublesGamesPlayed: number;
-  mixedGamesPlayed: number;
   dominantHand: string | null;
   yearsPlaying: number | null;
   preferredFormat: string | null;
@@ -32,6 +33,25 @@ interface PlayerProfile {
   emailDigestOptOut: boolean;
   avatarUrl: string | null;
   memberships: { isPrimary: boolean; club: { id: string; name: string } }[];
+  categoryRatings: CategoryRating[];
+}
+
+const NINE_CELLS: { label: string; format: string; cat: string }[] = [
+  { label: "RD",  format: "DOUBLES", cat: "REC"     },
+  { label: "RMx", format: "MIXED",   cat: "REC"     },
+  { label: "RS",  format: "SINGLES", cat: "REC"     },
+  { label: "CD",  format: "DOUBLES", cat: "CLUB"    },
+  { label: "CMx", format: "MIXED",   cat: "CLUB"    },
+  { label: "CS",  format: "SINGLES", cat: "CLUB"    },
+  { label: "TD",  format: "DOUBLES", cat: "TOURNEY" },
+  { label: "TMx", format: "MIXED",   cat: "TOURNEY" },
+  { label: "TS",  format: "SINGLES", cat: "TOURNEY" },
+];
+
+function getBestCatRating(ratings: CategoryRating[], format: string, cat: string): number | null {
+  const matches = ratings.filter((r) => r.format === format && r.gameCategory === cat && r.gamesPlayed > 0);
+  if (!matches.length) return null;
+  return matches.reduce((a, b) => (a.gamesPlayed >= b.gamesPlayed ? a : b)).rating;
 }
 
 export default function ProfilePage() {
@@ -240,26 +260,25 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Per-format ratings */}
-      <div className="grid grid-cols-3 gap-3 mb-4">
-        {[
-          { label: "Singles",       rating: player.singlesRating, games: player.singlesGamesPlayed },
-          { label: "Doubles",       rating: player.doublesRating, games: player.doublesGamesPlayed },
-          { label: "Mixed",         rating: player.mixedRating,   games: player.mixedGamesPlayed   },
-        ].map(({ label, rating, games }) => (
-          <div key={label} className="bg-slate-900 border border-slate-700 rounded-xl p-3">
-            <p className="text-xs text-slate-500 mb-1">{label}</p>
-            {games === 0 ? (
-              <p className="text-xl font-bold text-slate-600">—</p>
-            ) : (
-              <>
-                <p className="text-xl font-bold text-teal-400">{rating.toFixed(3)}</p>
-                <p className="text-xs text-slate-500 mt-0.5 mb-1.5">{games} game{games !== 1 ? "s" : ""}</p>
-                <ReliabilityBar gamesPlayed={games} compact />
-              </>
-            )}
-          </div>
-        ))}
+      {/* 9-category rating grid */}
+      <div className="bg-slate-900 border border-slate-700 rounded-2xl p-4 mb-4">
+        <div className="grid grid-cols-3 gap-x-3 gap-y-2.5">
+          {NINE_CELLS.map(({ label, format, cat }) => {
+            const val = getBestCatRating(player.categoryRatings, format, cat);
+            const isMx = label.endsWith("Mx");
+            return (
+              <div key={label} className="flex items-center justify-between">
+                <span className={`text-[11px] font-bold text-slate-500 ${isMx ? "" : "uppercase"}`}>{label}</span>
+                <span className={`text-sm font-semibold tabular-nums ${val !== null ? "text-teal-400" : "text-slate-700"}`}>
+                  {val !== null ? val.toFixed(2) : "—"}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        <p className="text-[10px] text-slate-600 mt-3 text-center">
+          RD/RS/RMx = Rec · CD/CS/CMx = Club · TD/TS/TMx = Tournament
+        </p>
       </div>
 
       {/* Details */}

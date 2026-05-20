@@ -23,6 +23,9 @@ export async function GET() {
           memberships: {
             select: { isPrimary: true, club: { select: { id: true, name: true } } },
           },
+          categoryRatings: {
+            select: { format: true, gameCategory: true, rating: true, gamesPlayed: true, clubId: true },
+          },
         },
       },
     },
