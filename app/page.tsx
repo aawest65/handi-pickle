@@ -1,5 +1,6 @@
 import Link from "next/link";
 import PickleballIcon from "@/app/components/PickleballIcon";
+import PendingApprovalsAlert from "@/app/components/PendingApprovalsAlert";
 
 const features = [
   {
@@ -38,6 +39,7 @@ const stats = [
 export default function Home() {
   return (
     <div className="flex flex-col">
+      <PendingApprovalsAlert />
       {/* Hero section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-teal-900 py-24 px-4">
         <div className="absolute inset-0 opacity-10">

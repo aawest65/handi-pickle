@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { useEffect, useState } from "react";
 
 const tabs = [
   {
@@ -35,11 +36,18 @@ const tabs = [
   {
     href: "/matches",
     label: "Record",
-    icon: (_active: boolean) => (
-      <div className="w-12 h-12 -mt-5 rounded-full bg-teal-500 flex items-center justify-center shadow-lg shadow-teal-500/30">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#020617" strokeWidth={2.5} className="w-6 h-6">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-        </svg>
+    icon: (_active: boolean, badge: number) => (
+      <div className="relative">
+        <div className="w-12 h-12 -mt-5 rounded-full bg-teal-500 flex items-center justify-center shadow-lg shadow-teal-500/30">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#020617" strokeWidth={2.5} className="w-6 h-6">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+        </div>
+        {badge > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow">
+            {badge > 9 ? "9+" : badge}
+          </span>
+        )}
       </div>
     ),
   },
@@ -65,9 +73,18 @@ const tabs = [
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const isAdmin      = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN";
   const isClubAdmin  = (session?.user as { isClubAdmin?: boolean })?.isClubAdmin ?? false;
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    fetch("/api/matches/pending")
+      .then((r) => r.json())
+      .then((d) => Array.isArray(d) && setPendingCount(d.length))
+      .catch(() => {});
+  }, [status, pathname]);
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-900 border-t border-slate-800"
@@ -90,7 +107,7 @@ export default function BottomNav() {
                   : "text-slate-500 hover:text-slate-300"
               }`}
             >
-              {tab.icon(active)}
+              {tab.icon(active, isRecord ? pendingCount : 0)}
               {!isRecord && (
                 <span className="text-[10px] font-medium leading-none">{tab.label}</span>
               )}
