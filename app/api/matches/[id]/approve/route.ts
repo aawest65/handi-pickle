@@ -41,7 +41,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Game is already resolved" }, { status: 409 });
   }
 
-  // For player approve/dispute: verify they're an opponent (not the submitter)
+  // For player approve/dispute: verify they're on the opposing team from the submitter
   if (!isAdmin) {
     const player = await prisma.player.findUnique({
       where: { userId: session.user.id },
@@ -55,6 +55,27 @@ export async function PATCH(
     }
     if (game.submittedByUserId === session.user.id) {
       return NextResponse.json({ error: "You cannot approve your own submission" }, { status: 403 });
+    }
+
+    // Determine which team the submitter's player is on and enforce opposing-team approval
+    if (game.submittedByUserId) {
+      const submitterPlayer = await prisma.player.findUnique({
+        where: { userId: game.submittedByUserId },
+        select: { id: true },
+      });
+      if (submitterPlayer) {
+        const submitterOnTeam1 = game.team1Player1Id === submitterPlayer.id || game.team1Player2Id === submitterPlayer.id;
+        const submitterOnTeam2 = game.team2Player1Id === submitterPlayer.id || game.team2Player2Id === submitterPlayer.id;
+        const approverOnTeam1  = game.team1Player1Id === player.id || game.team1Player2Id === player.id;
+        const approverOnTeam2  = game.team2Player1Id === player.id || game.team2Player2Id === player.id;
+
+        if (submitterOnTeam1 && !approverOnTeam2) {
+          return NextResponse.json({ error: "Only the opposing team can approve this score" }, { status: 403 });
+        }
+        if (submitterOnTeam2 && !approverOnTeam1) {
+          return NextResponse.json({ error: "Only the opposing team can approve this score" }, { status: 403 });
+        }
+      }
     }
   }
 

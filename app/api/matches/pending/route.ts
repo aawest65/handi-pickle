@@ -58,8 +58,41 @@ export async function GET(req: NextRequest) {
       ],
     },
     orderBy: { createdAt: "desc" },
-    select: gameSelect,
+    select: {
+      ...gameSelect,
+      submittedByUserId: true,
+      team1Player1Id: true,
+      team1Player2Id: true,
+      team2Player1Id: true,
+      team2Player2Id: true,
+    },
   });
 
-  return NextResponse.json(games);
+  // Resolve submitter player IDs in one query
+  const submitterUserIds = [...new Set(games.map((g) => g.submittedByUserId).filter(Boolean))] as string[];
+  const submitterPlayers = submitterUserIds.length
+    ? await prisma.player.findMany({
+        where: { userId: { in: submitterUserIds } },
+        select: { id: true, userId: true },
+      })
+    : [];
+  const submitterPlayerByUserId = Object.fromEntries(submitterPlayers.map((p) => [p.userId, p.id]));
+
+  // Keep only games where the current player is on the opposing team from the submitter
+  const eligible = games.filter((g) => {
+    const submitterPlayerId = g.submittedByUserId ? submitterPlayerByUserId[g.submittedByUserId] : null;
+    if (!submitterPlayerId) return true; // submitter has no player record (admin entry) — show to all participants
+
+    const submitterOnTeam1 = g.team1Player1Id === submitterPlayerId || g.team1Player2Id === submitterPlayerId;
+    const submitterOnTeam2 = g.team2Player1Id === submitterPlayerId || g.team2Player2Id === submitterPlayerId;
+    const currentOnTeam1   = g.team1Player1Id === player.id || g.team1Player2Id === player.id;
+    const currentOnTeam2   = g.team2Player1Id === player.id || g.team2Player2Id === player.id;
+
+    if (submitterOnTeam1) return currentOnTeam2;
+    if (submitterOnTeam2) return currentOnTeam1;
+    return true;
+  });
+
+  // Strip internal fields before returning
+  return NextResponse.json(eligible.map(({ submittedByUserId: _a, team1Player1Id: _b, team1Player2Id: _c, team2Player1Id: _d, team2Player2Id: _e, ...rest }) => rest));
 }
