@@ -360,9 +360,11 @@ export default function MatchesPage() {
       )}
 
       {/* My recent submissions */}
-      {submittedGames.length > 0 && (
-        <div className="mb-8 bg-slate-800/60 border border-slate-700 rounded-xl p-4">
-          <h2 className="text-sm font-semibold text-slate-300 mb-3">My Recent Submissions</h2>
+      <div className="mb-8 bg-slate-800/60 border border-slate-700 rounded-xl p-4">
+        <h2 className="text-sm font-semibold text-slate-300 mb-3">My Recent Submissions</h2>
+        {submittedGames.length === 0 ? (
+          <p className="text-xs text-slate-500">No games submitted yet.</p>
+        ) : (
           <div className="space-y-2">
             {submittedGames.map((g) => {
               const t1 = [g.team1Player1, g.team1Player2].filter(Boolean).map((p) => p!.name).join(" & ");
@@ -390,8 +392,8 @@ export default function MatchesPage() {
               );
             })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-slate-100">Record a Game</h1>
