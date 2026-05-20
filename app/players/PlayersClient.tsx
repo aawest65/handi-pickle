@@ -197,9 +197,27 @@ export function PlayersClient({ players }: { players: Player[] }) {
         </div>
       ) : (
         <div>
-          <p className="text-xs text-slate-500 mb-4">
+          <p className="text-xs text-slate-500 mb-3">
             {filtered.length} player{filtered.length !== 1 ? "s" : ""} found
           </p>
+          {/* Acronym legend */}
+          <div className="mb-4 px-3 py-2 bg-slate-800/60 border border-slate-700 rounded-xl flex flex-wrap gap-x-4 gap-y-1">
+            {[
+              { abbr: "RD",  def: "Rec Doubles" },
+              { abbr: "RMx", def: "Rec Mixed" },
+              { abbr: "RS",  def: "Rec Singles" },
+              { abbr: "CD",  def: "Club Doubles" },
+              { abbr: "CMx", def: "Club Mixed" },
+              { abbr: "CS",  def: "Club Singles" },
+              { abbr: "TD",  def: "Tournament Doubles" },
+              { abbr: "TMx", def: "Tournament Mixed" },
+              { abbr: "TS",  def: "Tournament Singles" },
+            ].map(({ abbr, def }) => (
+              <span key={abbr} className="text-[10px] text-slate-400 whitespace-nowrap">
+                <span className="font-bold text-slate-300">{abbr}</span> = {def}
+              </span>
+            ))}
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((p) => <PlayerCard key={p.id} player={p} />)}
           </div>
