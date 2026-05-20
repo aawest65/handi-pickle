@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 
 const GAME_TYPE_LABELS: Record<string, string> = {
-  REC:          "Recreational",
+  REC:          "Recreational / Club",
   TOURNEY_REG:  "Tournament — Regular",
   TOURNEY_MEDAL:"Tournament — Medal Round",
 };
