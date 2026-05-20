@@ -22,6 +22,10 @@ async function getClub(id: string) {
               avatarUrl: true,
               city: true,
               state: true,
+              categoryRatings: {
+                where: { gameCategory: "CLUB" },
+                select: { format: true, rating: true, gamesPlayed: true, clubId: true },
+              },
             },
           },
         },
@@ -122,40 +126,63 @@ export default async function ClubDetailPage({
             No members yet.
           </div>
         ) : (
-          <div className="space-y-2">
-            {club.memberships.map(({ player, isPrimary }) => {
-              const initials = player.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
-              return (
-                <Link
-                  key={player.id}
-                  href={`/players/${player.id}`}
-                  className="flex items-center gap-3 bg-slate-800 border border-slate-700 hover:border-teal-600 rounded-xl px-4 py-3 transition-colors group"
-                >
-                  <div className="w-9 h-9 rounded-full bg-emerald-900 border border-emerald-700 overflow-hidden flex items-center justify-center text-xs font-bold text-emerald-300 shrink-0 relative">
-                    {player.avatarUrl ? (
-                      <Image src={player.avatarUrl} alt={player.name} fill className="object-cover" sizes="36px" />
-                    ) : (
-                      initials
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-200 group-hover:text-teal-300 transition-colors truncate">
-                      {player.name}
-                      {isPrimary && (
-                        <span className="ml-2 text-[10px] font-semibold text-teal-400 border border-teal-700 rounded-full px-1.5 py-0.5 align-middle">Home</span>
-                      )}
-                    </p>
-                    {(player.city || player.state) && (
-                      <p className="text-xs text-slate-500 truncate">{[player.city, player.state].filter(Boolean).join(", ")}</p>
-                    )}
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-sm font-bold text-amber-400">{player.currentRating.toFixed(2)}</p>
-                    <p className="text-[10px] text-slate-500">#{player.playerNumber}</p>
-                  </div>
-                </Link>
-              );
-            })}
+          <div className="overflow-x-auto rounded-xl border border-slate-700">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-800/80 border-b border-slate-700">
+                  <th className="text-left px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-slate-500">Player</th>
+                  <th className="text-center px-3 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-slate-500">CD</th>
+                  <th className="text-center px-3 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-slate-500">CMx</th>
+                  <th className="text-center px-3 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-slate-500">CS</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-700/50">
+                {club.memberships.map(({ player, isPrimary }) => {
+                  const initials = player.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
+                  const clubRatings = player.categoryRatings.filter((r) => r.clubId === id);
+                  const cd  = clubRatings.find((r) => r.format === "DOUBLES");
+                  const cmx = clubRatings.find((r) => r.format === "MIXED");
+                  const cs  = clubRatings.find((r) => r.format === "SINGLES");
+
+                  return (
+                    <tr key={player.id} className="hover:bg-slate-800/60 transition-colors group">
+                      <td className="px-4 py-3">
+                        <Link href={`/players/${player.id}`} className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-emerald-900 border border-emerald-700 overflow-hidden flex items-center justify-center text-xs font-bold text-emerald-300 shrink-0 relative">
+                            {player.avatarUrl ? (
+                              <Image src={player.avatarUrl} alt={player.name} fill className="object-cover" sizes="32px" />
+                            ) : (
+                              initials
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-slate-200 group-hover:text-teal-300 transition-colors truncate">
+                              {player.name}
+                              {isPrimary && (
+                                <span className="ml-2 text-[10px] font-semibold text-teal-400 border border-teal-700 rounded-full px-1.5 py-0.5 align-middle">Home</span>
+                              )}
+                            </p>
+                            <p className="text-[10px] text-slate-500">#{player.playerNumber}</p>
+                          </div>
+                        </Link>
+                      </td>
+                      {[cd, cmx, cs].map((r, i) => (
+                        <td key={i} className="text-center px-3 py-3">
+                          {r && r.gamesPlayed > 0 ? (
+                            <>
+                              <p className="text-sm font-bold text-slate-100">{r.rating.toFixed(2)}</p>
+                              <p className="text-[10px] text-slate-500">{r.gamesPlayed}g</p>
+                            </>
+                          ) : (
+                            <span className="text-slate-700 font-medium">—</span>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
