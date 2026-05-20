@@ -132,7 +132,7 @@ export default async function ClubDetailPage({
                 <tr className="bg-slate-800/80 border-b border-slate-700">
                   <th className="text-left px-4 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-slate-500">Player</th>
                   <th className="text-center px-3 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-slate-500">CD</th>
-                  <th className="text-center px-3 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-slate-500">CMx</th>
+                  <th className="text-center px-3 py-2.5 text-[10px] font-semibold tracking-widest text-slate-500">CMx</th>
                   <th className="text-center px-3 py-2.5 text-[10px] font-semibold uppercase tracking-widest text-slate-500">CS</th>
                 </tr>
               </thead>
