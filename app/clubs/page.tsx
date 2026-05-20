@@ -301,17 +301,19 @@ function ClubGrid({
               isMember ? "border-teal-600" : "border-slate-700"
             }`}
           >
-            {club.logoUrl ? (
-              <img src={club.logoUrl} alt={`${club.name} logo`} className="w-14 h-14 rounded-lg object-contain bg-slate-700 border border-slate-600 shrink-0" />
-            ) : (
-              <div className="w-14 h-14 rounded-lg bg-slate-700 border border-slate-600 shrink-0 flex items-center justify-center text-slate-500 text-xl font-bold">
-                {club.name.charAt(0)}
-              </div>
-            )}
+            <Link href={`/clubs/${club.id}`} className="shrink-0 hover:opacity-80 transition-opacity">
+              {club.logoUrl ? (
+                <img src={club.logoUrl} alt={`${club.name} logo`} className="w-14 h-14 rounded-lg object-contain bg-slate-700 border border-slate-600" />
+              ) : (
+                <div className="w-14 h-14 rounded-lg bg-slate-700 border border-slate-600 flex items-center justify-center text-slate-500 text-xl font-bold">
+                  {club.name.charAt(0)}
+                </div>
+              )}
+            </Link>
 
             <div className="min-w-0 flex-1">
               <div className="flex items-start justify-between gap-2 flex-wrap">
-                <h2 className="font-semibold text-slate-100 truncate">{club.name}</h2>
+                <Link href={`/clubs/${club.id}`} className="font-semibold text-slate-100 hover:text-teal-300 transition-colors truncate">{club.name}</Link>
                 <div className="flex items-center gap-1.5 shrink-0">
                   {club.isPrivate && (
                     <span className="text-xs text-slate-500 border border-slate-600 rounded-full px-2 py-0.5">Private</span>
