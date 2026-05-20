@@ -23,8 +23,9 @@ interface PlayerProfile {
   city: string | null;
   state: string | null;
   selfRatedCategory: string;
-  currentRating: number;
   gamesPlayed: number;
+  sportsmanshipSum: number;
+  sportsmanshipCount: number;
   dominantHand: string | null;
   yearsPlaying: number | null;
   preferredFormat: string | null;
@@ -248,15 +249,29 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Rating card */}
+      {/* Stats card */}
       <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 mb-4 flex items-center justify-between">
         <div>
-          <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Current Rating</p>
-          <p className="text-4xl font-bold text-teal-400">{player.currentRating.toFixed(2)}</p>
-        </div>
-        <div className="text-right">
           <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Games Played</p>
           <p className="text-4xl font-bold text-slate-100">{player.gamesPlayed}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Sportsmanship</p>
+          {(() => {
+            const { sportsmanshipSum: sum, sportsmanshipCount: count } = player;
+            const avg = count > 0 ? sum / count : null;
+            const grade = avg === null ? "—" : avg >= 4.5 ? "A" : avg >= 3.5 ? "B" : avg >= 2.5 ? "C" : avg >= 1.5 ? "D" : "F";
+            const color = grade === "A" ? "border-emerald-500 bg-emerald-900/50 text-emerald-300"
+              : grade === "B" ? "border-teal-500 bg-teal-900/50 text-teal-300"
+              : grade === "C" ? "border-yellow-500 bg-yellow-900/50 text-yellow-300"
+              : grade === "—" ? "border-slate-600 text-slate-500"
+              : "border-red-500 bg-red-900/50 text-red-300";
+            return (
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold border-2 ml-auto ${color}`}>
+                {grade}
+              </div>
+            );
+          })()}
         </div>
       </div>
 
