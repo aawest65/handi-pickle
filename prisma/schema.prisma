@@ -252,6 +252,7 @@ model Player {
   categoryRatings        PlayerCategoryRating[]
   sportsmanshipGiven     SportsmanshipRating[]    @relation("Rater")
   sportsmanshipReceived  SportsmanshipRating[]    @relation("RatedPlayer")
+  gameApprovals          GameApproval[]
   tournamentRegistrations TournamentRegistration[]
   coachReviews           CoachReview[]
 }
@@ -350,6 +351,19 @@ model Game {
 
   ratingHistory        RatingHistory[]
   sportsmanshipRatings SportsmanshipRating[]
+  approvals            GameApproval[]
+}
+
+model GameApproval {
+  id        String   @id @default(cuid())
+  gameId    String
+  playerId  String
+  createdAt DateTime @default(now())
+
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, playerId])
 }
 
 model RatingHistory {

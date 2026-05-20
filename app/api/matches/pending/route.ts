@@ -50,6 +50,8 @@ export async function GET(req: NextRequest) {
     where: {
       status: { in: ["PENDING", "FLAGGED"] },
       submittedByUserId: { not: session.user.id },
+      // Must not have already approved this game
+      approvals: { none: { playerId: player.id } },
       OR: [
         { team1Player1Id: player.id },
         { team1Player2Id: player.id },

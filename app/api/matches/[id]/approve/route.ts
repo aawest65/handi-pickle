@@ -32,6 +32,7 @@ export async function PATCH(
       team1Player2Id: true,
       team2Player1Id: true,
       team2Player2Id: true,
+      approvals: { select: { playerId: true } },
     },
   });
 
@@ -84,11 +85,63 @@ export async function PATCH(
     return NextResponse.json({ success: true, status: "DISPUTED" });
   }
 
-  // approve or force-approve: run ratings
+  // force-approve (admin): skip approval tracking and process immediately
+  if (action === "force-approve") {
+    await prisma.$transaction(async (tx) => {
+      await tx.game.update({ where: { id }, data: { status: "APPROVED" } });
+      const ratings = await tx.sportsmanshipRating.findMany({ where: { gameId: id } });
+      for (const r of ratings) {
+        await tx.player.update({
+          where: { id: r.ratedPlayerId },
+          data: { sportsmanshipSum: { increment: r.score }, sportsmanshipCount: { increment: 1 } },
+        });
+      }
+    });
+    await processGame(id);
+    return NextResponse.json({ success: true, status: "APPROVED" });
+  }
+
+  // Regular approve: record this player's approval, process only when all opponents have approved
+
+  // Determine which players on the opposing team need to approve
+  const submitterPlayer = game.submittedByUserId
+    ? await prisma.player.findUnique({ where: { userId: game.submittedByUserId }, select: { id: true } })
+    : null;
+
+  const team1Ids = [game.team1Player1Id, game.team1Player2Id].filter(Boolean) as string[];
+  const team2Ids = [game.team2Player1Id, game.team2Player2Id].filter(Boolean) as string[];
+
+  const submitterOnTeam1 = submitterPlayer && team1Ids.includes(submitterPlayer.id);
+  const requiredApproverIds = submitterOnTeam1 ? team2Ids : team1Ids;
+
+  // Record this player's approval (upsert — idempotent if they somehow hit it twice)
+  const approvingPlayerId = isAdmin
+    ? null
+    : (await prisma.player.findUnique({ where: { userId: session.user.id }, select: { id: true } }))?.id;
+
+  if (approvingPlayerId) {
+    await prisma.gameApproval.upsert({
+      where: { gameId_playerId: { gameId: id, playerId: approvingPlayerId } },
+      create: { gameId: id, playerId: approvingPlayerId },
+      update: {},
+    });
+  }
+
+  // Check how many required approvers have now approved
+  const approvedPlayerIds = new Set([
+    ...game.approvals.map((a) => a.playerId),
+    ...(approvingPlayerId ? [approvingPlayerId] : []),
+  ]);
+  const allApproved = requiredApproverIds.every((pid) => approvedPlayerIds.has(pid));
+
+  if (!allApproved) {
+    const remaining = requiredApproverIds.filter((pid) => !approvedPlayerIds.has(pid)).length;
+    return NextResponse.json({ success: true, status: "PENDING", waitingFor: remaining });
+  }
+
+  // All required approvals received — process the game
   await prisma.$transaction(async (tx) => {
     await tx.game.update({ where: { id }, data: { status: "APPROVED" } });
-
-    // Apply any deferred sportsmanship ratings stored while game was pending
     const ratings = await tx.sportsmanshipRating.findMany({ where: { gameId: id } });
     for (const r of ratings) {
       await tx.player.update({
@@ -99,6 +152,5 @@ export async function PATCH(
   });
 
   await processGame(id);
-
   return NextResponse.json({ success: true, status: "APPROVED" });
 }

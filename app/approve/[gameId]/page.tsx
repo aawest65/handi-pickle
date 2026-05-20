@@ -71,11 +71,12 @@ export default function ApprovePage() {
   const [game, setGame] = useState<PendingGame | null>(null);
   const [opponents, setOpponents] = useState<Opponent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [step, setStep] = useState<"review" | "rate" | "disputed" | "done">("review");
+  const [step, setStep] = useState<"review" | "rate" | "waiting" | "disputed" | "done">("review");
   const [acting, setActing] = useState(false);
   const [scores, setScores] = useState<Record<string, number>>({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingFinalStep, setPendingFinalStep] = useState<"done" | "waiting">("done");
 
   useEffect(() => {
     Promise.all([
@@ -100,7 +101,16 @@ export default function ApprovePage() {
         body: JSON.stringify({ action: "approve" }),
       });
       if (!res.ok) { const d = await res.json(); setError(d.error ?? "Failed"); return; }
-      setStep(opponents.length > 0 ? "rate" : "done");
+      const data = await res.json();
+      // Show rate screen first (sportsmanship is stored deferred regardless of approval count)
+      // Then land on "waiting" or "done" depending on whether all approvals are in
+      if (opponents.length > 0) {
+        setStep("rate");
+        // Store where to go after rating
+        setPendingFinalStep(data.status === "APPROVED" ? "done" : "waiting");
+      } else {
+        setStep(data.status === "APPROVED" ? "done" : "waiting");
+      }
     } catch { setError("Network error"); }
     finally { setActing(false); }
   }
@@ -125,7 +135,7 @@ export default function ApprovePage() {
       .filter((o) => scores[o.id] > 0)
       .map((o) => ({ playerId: o.id, score: scores[o.id] }));
 
-    if (ratings.length === 0) { setStep("done"); return; }
+    if (ratings.length === 0) { setStep(pendingFinalStep); return; }
 
     setSubmitting(true);
     try {
@@ -136,7 +146,7 @@ export default function ApprovePage() {
       });
     } finally {
       setSubmitting(false);
-      setStep("done");
+      setStep(pendingFinalStep);
     }
   }
 
@@ -175,6 +185,25 @@ export default function ApprovePage() {
         <div className="text-5xl mb-4">🚩</div>
         <h1 className="text-2xl font-bold text-slate-100 mb-2">Dispute Filed</h1>
         <p className="text-slate-400 text-sm mb-6">An admin will review this match and make a final determination.</p>
+        <button onClick={() => router.push("/")} className="px-6 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-300 font-semibold rounded-xl text-sm transition-colors">
+          Back to Home
+        </button>
+      </div>
+    );
+  }
+
+  if (step === "waiting") {
+    return (
+      <div className="max-w-md mx-auto py-20 px-4 text-center">
+        <div className="w-14 h-14 rounded-full bg-amber-900/40 border-2 border-amber-600 flex items-center justify-center mx-auto mb-4">
+          <svg className="w-7 h-7 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z" />
+          </svg>
+        </div>
+        <h1 className="text-2xl font-bold text-slate-100 mb-2">Your approval is in</h1>
+        <p className="text-slate-400 text-sm mb-6">
+          Waiting for your doubles partner to also approve. Ratings will update once both opponents confirm the score.
+        </p>
         <button onClick={() => router.push("/")} className="px-6 py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-300 font-semibold rounded-xl text-sm transition-colors">
           Back to Home
         </button>
