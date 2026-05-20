@@ -148,7 +148,7 @@ export default function ClubsPage() {
             {myClubs.map((club) => (
               <Link
                 key={club.id}
-                href={`/leaderboard?clubId=${club.id}`}
+                href={`/clubs/${club.id}`}
                 className="flex items-center gap-1.5 shrink-0 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-teal-700/50 rounded-full transition-colors"
               >
                 {club.logoUrl ? (
